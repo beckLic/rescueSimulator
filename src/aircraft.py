@@ -20,6 +20,7 @@ class Vehiculo:
         self.posicion = pygame.math.Vector2(pos_inicial)
         self.objetivo_actual = None
         self.camino_actual = []
+        self.velocidad = 3 # Píxeles por fotograma
         self.estado = "inactivo"  # Posibles estados: inactivo, buscando, volviendo
         
         # --- Atributos de Juego ---
