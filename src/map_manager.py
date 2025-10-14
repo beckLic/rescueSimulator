@@ -26,19 +26,17 @@ class MapManager:
 
     def _colocar_entidades(self, cantidad, tipo_entidad):
         """Función auxiliar para colocar 'cantidad' de un 'tipo_entidad' en el mapa."""
-        for _ in range(cantidad):
-            while True:
-                x = random.randint(0, self.width - 1)
-                y = random.randint(0, self.height - 1)
-                
-                # Si la celda está vacía, colocamos la entidad y salimos del bucle.
-                if self.grid[y][x] is None:
-                    # Cuando las clases estén listas, crearás instancias:
-                    # self.grid[y][x] = Recurso(tipo=tipo_entidad, x=x, y=y)
-                    
-                    # Por ahora, usamos un placeholder (string):
-                    self.grid[y][x] = tipo_entidad
-                    break
+        cont = 0
+        while cont < (cantidad - 1):
+            #coordenadas (x,y) al azar para colocar las entidades
+            x = random.randint(0,self.width - 1)
+            y = random.randint(0,self.height - 1)
+
+            #checkear que esa coordenada esté libre
+            if self.grid[x][y] is None:
+                self.grid[x][y] = tipo_entidad
+                cont += 1
+            
 
     def generar_mapa_aleatorio(self):
         """
