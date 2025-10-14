@@ -1,5 +1,6 @@
 #GESTION DEL MAPA
 import random
+from classes import *
 
 # CLASE PARA INICIALIZAR EL MAPA
 class MapManager:
@@ -24,8 +25,10 @@ class MapManager:
     
 # ... (init y otros métodos)
 
-    def _colocar_entidades(self, cantidad, tipo_entidad):
+    def _colocar_recursos(self, cantidad, tipo_recurso):
         """Función auxiliar para colocar 'cantidad' de un 'tipo_entidad' en el mapa."""
+        #instancio el recurso para poder asignarle la posicion aleatoria despues
+        recurso = Recurso(tipo_recurso, RESOURCE_STATS)
         cont = 0
         while cont < (cantidad - 1):
             #coordenadas (x,y) al azar para colocar las entidades
@@ -34,7 +37,9 @@ class MapManager:
 
             #checkear que esa coordenada esté libre
             if self.grid[x][y] is None:
-                self.grid[x][y] = tipo_entidad
+                self.grid[x][y] = tipo_recurso
+                #seteo la posicion del recurso
+                recurso.position = (x,y)
                 cont += 1
             
 
@@ -47,7 +52,7 @@ class MapManager:
         
         # Colocamos recursos
         self._colocar_entidades(10, "persona")
-        self._colocar_entidades(10, "alimentos") # La especificación no detalla la cantidad de cada mercancía, asumimos una distribución
+        self._colocar_entidades(10, "alimentos")
         self._colocar_entidades(15, "ropa")
         self._colocar_entidades(10, "medicamentos")
         self._colocar_entidades(15, "armamentos")
@@ -61,7 +66,6 @@ class MapManager:
         
         print("Recursos y minas distribuidos aleatoriamente.")
 
-# ... (otros métodos)
 
     def es_posicion_valida(self, x, y):
         """Devuelve True si la coordenada (x, y) está dentro del mapa."""
