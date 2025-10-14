@@ -1,8 +1,5 @@
 #CLASES DE VEHICULOS
 
-# Se importa pygame solo por el tipo de dato Vector2, que es muy útil
-# para manejar posiciones y movimiento en un entorno 2D.
-
 import pygame
 
 class Vehiculo:
@@ -121,3 +118,38 @@ if __name__ == "__main__":
     moto_j1.recolectar("persona_rescatada_01")
     print(f"Carga actual de la moto: {moto_j1.carga_actual}")
     print(f"Viajes realizados por la moto: {moto_j1.viajes_realizados}")
+
+#---------------------------------------------------------------------------------------------------------
+#CLASES DE RECURSOS
+
+import json
+
+#FUNCION PARA TRAER LOS DATOS DE LOS RECURSOS DEL JSON
+def load_resource_config(filepath: str) -> dict:
+
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        return config
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo de configuración en {filepath}")
+        return {}
+    except json.JSONDecodeError:
+        print(f"Error: El archivo JSON en {filepath} está mal formateado.")
+        return {}
+
+
+#SE CARGA LA CONFIGURACION UNA VEZ CUANDO EMPIEZA EL SIMULADOR
+RESOURCE_STATS = load_resource_config('config/default_config.json')
+
+class Recurso:
+    #PARA INCIALIZAR UN RECURSO SE PASA COMO PARAMETRO EL TIPO DE RECURSO Y EL DICCIONARIO
+    def __init__(self, resource_type: str, stats_config: dict):
+        if resource_type not in stats_config:
+            raise ValueError(f"El tipo de recurso '{resource_type}' no es válido.")
+        
+        stats = stats_config[resource_type]
+        
+        self.type = resource_type
+        self.score = stats['score']
+        self.position = None

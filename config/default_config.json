@@ -1,0 +1,17 @@
+{
+  "Persona": {
+    "score": 50
+  },
+  "Alimentos": {
+    "score": 10
+  },
+  "Ropa": {
+    "score": 5
+  },
+  "Medicamentos": {
+    "score": 20
+  },
+  "Armamentos": {
+    "score": 50
+  }
+}
