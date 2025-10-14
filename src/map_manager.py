@@ -4,6 +4,7 @@ from classes import *
 
 # CLASE PARA INICIALIZAR EL MAPA
 class MapManager:
+    #SE VA A INSTANCIAR EN EL game_engine.py
     def __init__(self, width, height):
         self.width = width
         self.height = height
@@ -27,8 +28,7 @@ class MapManager:
 
     def _colocar_recursos(self, cantidad, tipo_recurso):
         """Función auxiliar para colocar 'cantidad' de un 'tipo_entidad' en el mapa."""
-        #instancio el recurso para poder asignarle la posicion aleatoria despues
-        recurso = Recurso(tipo_recurso, RESOURCE_STATS)
+
         cont = 0
         while cont < (cantidad - 1):
             #coordenadas (x,y) al azar para colocar las entidades
@@ -37,9 +37,9 @@ class MapManager:
 
             #checkear que esa coordenada esté libre
             if self.grid[x][y] is None:
-                self.grid[x][y] = tipo_recurso
-                #seteo la posicion del recurso
-                recurso.position = (x,y)
+                #instancio el recurso para poder asignarle la posicion aleatoria
+                recurso = Recurso(tipo_recurso, RESOURCE_STATS, (x,y))
+                self.grid[x][y] = recurso
                 cont += 1
             
 
