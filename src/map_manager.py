@@ -51,11 +51,11 @@ class MapManager:
         self.grid = [[None for _ in range(self.width)] for _ in range(self.height)]
         
         # Colocamos recursos
-        self._colocar_entidades(10, "persona")
-        self._colocar_entidades(10, "alimentos")
-        self._colocar_entidades(15, "ropa")
-        self._colocar_entidades(10, "medicamentos")
-        self._colocar_entidades(15, "armamentos")
+        self._colocar_entidades(10, "Persona")
+        self._colocar_entidades(10, "Alimentos")
+        self._colocar_entidades(15, "Ropa")
+        self._colocar_entidades(10, "Medicamentos")
+        self._colocar_entidades(15, "Armamentos")
 
         # Colocamos minas
         self._colocar_entidades(1, "mina_01")
@@ -85,7 +85,7 @@ class MapManager:
             return elemento
         return None
 
-#------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 #DEBUGGING
 
 def run_debug():
