@@ -5,7 +5,8 @@ from classes import *
 # CLASE PARA INICIALIZAR EL MAPA
 class MapManager:
     #SE VA A INSTANCIAR EN EL game_engine.py
-    def __init__(self, width, height):
+    def __init__(self, width, height,config):
+        self.mine_config = config.get("Mines", {})
         self.width = width
         self.height = height
         # Creamos una matriz para representar el mapa, inicialmente vacía (con None)
@@ -28,7 +29,6 @@ class MapManager:
 
     def _colocar_recursos(self, cantidad, tipo_recurso):
         """Función auxiliar para colocar 'cantidad' de un 'tipo_entidad' en el mapa."""
-
         cont = 0
         while cont < (cantidad - 1):
             #coordenadas (x,y) al azar para colocar las entidades
@@ -41,7 +41,58 @@ class MapManager:
                 recurso = Recurso(tipo_recurso, RESOURCE_STATS, (x,y))
                 self.grid[x][y] = recurso
                 cont += 1
+
+    #FUNCION PARA COLOCAR LAS MINAS EN EL MAPA QUE SE EJECUTA PRIMERO QUE LA DE COLOCAR RECURSOS
+    def colocar_minas(self):
+        """
+        Coloca las minas del JSON en el mapa, asegurándose de que
+        la posición de su centro esté libre antes de crearla.
+        """
+        minas_config = self.mine_config.items()
+
+        for mina_nombre, valores in minas_config:
+            class_name = valores.get("class")
             
+            # Inicia el bucle para encontrar una posición válida
+            posicion_encontrada = False
+            while not posicion_encontrada:
+                
+                # 1. Genera una posición candidata UNA SOLA VEZ por intento
+                pos = (random.randint(50, self.width - 50), random.randint(50, self.height - 50))
+
+                # 2. Chequea si la posición está libre usando la función posicion_libre
+                if self.posicion_libre(pos[0], pos[1]):
+                    
+                    new_mine = None
+                    # 3. Usa if/elif para crear la mina correcta
+                    if class_name == "MinaCircular":
+                        radius = valores.get("radius")
+                        new_mine = MinaCircular(position=pos, radius=radius)
+                        
+                    elif class_name == "MinaLineal":
+                        length = valores.get("length")
+                        orientation = valores.get("orientation")
+                        # Corregido: Ahora crea una MinaLineal
+                        new_mine = MinaLineal(position=pos, length=length, orientation=orientation)
+                        
+                    elif class_name == "MinaMovil":
+                        radius = valores.get("radius")
+                        cycle = valores.get("cycle_duration")
+                        # Corregido: Ahora crea una MinaMovil
+                        new_mine = MinaMovil(position=pos, radius=radius, cycle_duration=cycle)
+
+                    # 4. Si se creó la mina, la colocamos en la grilla
+                    if new_mine:
+                        self.grid[pos[0]][pos[1]] = new_mine
+                        posicion_encontrada = True # Esto hará que el 'while' termine
+
+        
+
+    def posicion_libre(self, x, y):
+        """Devuelve True si la celda (x, y) está vacía (None)."""
+        return self.grid[x][y] is None        
+        
+
 
     def generar_mapa_aleatorio(self):
         """
