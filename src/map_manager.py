@@ -9,6 +9,11 @@ class MapManager:
         self.mine_config = config.get("Mines", {})
         self.width = width
         self.height = height
+        # Atributo para guardar los objetos de las minas
+        self.mines = []
+        
+        # Atributo para guardar los objetos de los recursos
+        self.resources = []
         # Creamos una matriz para representar el mapa, inicialmente vacía (con None)
         self.grid = [[None for _ in range(width)] for _ in range(height)]
         print(f"Mapa de {width}x{height} creado.")
@@ -27,20 +32,49 @@ class MapManager:
     
 # ... (init y otros métodos)
 
-    def _colocar_recursos(self, cantidad, tipo_recurso):
-        """Función auxiliar para colocar 'cantidad' de un 'tipo_entidad' en el mapa."""
-        cont = 0
-        while cont < (cantidad - 1):
-            #coordenadas (x,y) al azar para colocar las entidades
-            x = random.randint(0,self.width - 1)
-            y = random.randint(0,self.height - 1)
+    # Asumiendo que esta función está dentro de la clase MapManager
 
-            #checkear que esa coordenada esté libre
-            if self.grid[x][y] is None:
-                #instancio el recurso para poder asignarle la posicion aleatoria
-                recurso = Recurso(tipo_recurso, RESOURCE_STATS, (x,y))
-                self.grid[x][y] = recurso
-                cont += 1
+def _colocar_recursos(self, resource_config):
+    """
+    Coloca todos los recursos del JSON en el mapa, asegurándose de que
+    no se generen dentro del área de efecto de ninguna mina.
+    """
+    # Itera sobre cada tipo de recurso definido en el JSON
+    for resource_type, stats in resource_config.items():
+        
+        # Bucle para crear la cantidad ('count') de recursos de este tipo
+        for _ in range(stats.get("count", 0)):
+            
+            # Inicia el bucle para encontrar una posición segura
+            posicion_segura_encontrada = False
+            while not posicion_segura_encontrada:
+                
+                # 1. Generamos una posición candidata aleatoria en el mapa
+                x = random.randint(0, self.width - 1)
+                y = random.randint(0, self.height - 1)
+                pos_candidata = (x, y)
+
+                # 2. Suponemos que la posición es segura por ahora
+                es_posicion_segura = True
+
+                # 3. Verifica la posición contra TODAS las minas ya colocadas
+                for mina in self.mines: 
+                    if mina.is_inside_area(pos_candidata):
+                        es_posicion_segura = False # no es segura
+                        break # No tiene sentido seguir buscando, probamos otra posición
+
+                # 4. Si después de revisar todas las minas sigue siendo segura
+                if es_posicion_segura:
+                    # Y además nos aseguramos de que la celda de la grilla esté libre
+                    if self.grid[x][y] is None:
+                        posicion_segura_encontrada = True
+            
+            # 5. Cuando el bucle 'while' termina, tenemos una posición segura garantizada
+            # Instanciamos el recurso y lo colocamos en la grilla
+            recurso = Recurso(resource_type, pos_candidata, resource_config)
+            self.grid[x][y] = recurso
+
+    print(f"Se han distribuido los recursos de forma segura.")
 
     #FUNCION PARA COLOCAR LAS MINAS EN EL MAPA QUE SE EJECUTA PRIMERO QUE LA DE COLOCAR RECURSOS
     def colocar_minas(self):
