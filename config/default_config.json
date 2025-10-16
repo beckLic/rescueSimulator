@@ -1,48 +1,54 @@
 {
-  "Persona": {
-    "score": 50
+  "Recursos": {
+    "Personas": {
+      "count": 10,
+      "score": 50
+    },
+    "Alimentos": {
+      "count": 15,
+      "score": 10
+    },
+    "Ropa": {
+      "count": 15,
+      "score": 5
+    },
+    "Medicamentos": {
+      "count": 10,
+      "score": 20
+    },
+    "Armamentos": {
+      "count": 10,
+      "score": 50
+    }
   },
-  "Alimentos": {
-    "score": 10
-  },
-  "Ropa": {
-    "score": 5
-  },
-  "Medicamentos": {
-    "score": 20
-  },
-  "Armamentos": {
-    "score": 50
-  },
-
-  "Mines": {
-  "Mina_01": {
-    "class": "MinaCircular",
-    "count": 1,
-    "radius": 10
-  },
-  "Mina_02": {
-    "class": "MinaCircular",
-    "count": 1,
-    "radius": 5
-  },
-  "Mina_T1": {
-    "class": "MinaLineal",
-    "count": 1,
-    "length": 10,
-    "orientation": "horizontal"
-  },
-  "Mina_T2": {
-    "class": "MinaLineal",
-    "count": 1,
-    "length": 5,
-    "orientation": "vertical"
-  },
-  "Mina_G1": {
-    "class": "MinaMovil",
-    "count": 1,
-    "radius": 7,
-    "cycle_duration": 5
+  "Minas": {
+    "Mina_01": {
+      "class": "MinaCircular",
+      "count": 1,
+      "radius": 10
+    },
+    "Mina_02": {
+      "class": "MinaCircular",
+      "count": 1,
+      "radius": 5
+    },
+    "Mina_T1": {
+      "class": "MinaLineal",
+      "count": 1,
+      "length": 10,
+      "orientation": "Horizontal"
+    },
+    "Mina_T2": {
+      "class": "MinaLineal",
+      "count": 1,
+      "length": 5,
+      "orientation": "Vertical"
+    },
+    "Mina_G1": {
+      "class": "MinaMovil",
+      "count": 1,
+      "radius": 7,
+      "cycle_duration": 5
+    }
   }
-}
 }
