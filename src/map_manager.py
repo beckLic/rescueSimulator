@@ -156,9 +156,22 @@ class MapManager:
 
     def generar_mapa_aleatorio(self):
         """
-        Limpia el mapa y distribuye todos los recursos y minas de forma aleatoria.
+        Limpia completamente el mapa y distribuye de nuevo todos los
+        recursos y minas de forma aleatoria.
         """
+        # 1. Limpiar las listas de objetos existentes.
+        self.mines.clear()
+        self.resources.clear()
 
+        # 2. Reiniciar la matriz (grid) a su estado inicial (todo None).
+        self.grid = [[None for _ in range(self.width)] for _ in range(self.height)]
+
+        # 3. Reutilizar las funciones de colocación que ya funcionan.
+        # Es crucial llamar a colocar_minas primero.
+        self.colocar_minas()
+
+        
+        self._colocar_recursos()       
   
 
     def es_posicion_valida(self, x, y):
@@ -190,6 +203,8 @@ config = load_resource_config(RUTA_CONFIG)
 mapa = MapManager(50,50,config)
 mapa.colocar_minas()
 mapa._colocar_recursos()
+print(mapa)
+mapa.generar_mapa_aleatorio()
 print(mapa)
 
 
