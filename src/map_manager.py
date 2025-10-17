@@ -86,7 +86,6 @@ class MapManager:
                     for mina in self.mines: 
                         if mina.is_inside_area(pos_candidata):
                             es_posicion_segura = False # no es segura
-                            print("POSICION DENTRO DEL RANGO DE UNA MINA")
                             break # No tiene sentido seguir buscando, probamos otra posición
 
                     # 4. Si después de revisar todas las minas sigue siendo segura
@@ -96,7 +95,7 @@ class MapManager:
                             posicion_segura_encontrada = True
                 
                 # 5. Cuando el bucle 'while' termina, tenemos una posición segura garantizada
-                # Instanciamos el recurso y lo colocamos en la grilla
+                # Instanciamos el recurso y lo colocamos en el mapa
                 recurso = Recurso(resource_type,resources,pos_candidata)
                 self.grid[x][y] = recurso
                 self.resources.append(recurso)
