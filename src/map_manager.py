@@ -86,6 +86,7 @@ class MapManager:
                     for mina in self.mines: 
                         if mina.is_inside_area(pos_candidata):
                             es_posicion_segura = False # no es segura
+                            print("POSICION DENTRO DEL RANGO DE UNA MINA")
                             break # No tiene sentido seguir buscando, probamos otra posición
 
                     # 4. Si después de revisar todas las minas sigue siendo segura
@@ -188,10 +189,11 @@ RUTA_CONFIG = "config/default_config.json"
 config = load_resource_config(RUTA_CONFIG)
 
 mapa = MapManager(50,50,config)
-mapa._colocar_recursos()
-#print(mapa.resources)
 mapa.colocar_minas()
+mapa._colocar_recursos()
 print(mapa)
+
+
 
 
 
