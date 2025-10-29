@@ -35,7 +35,7 @@ class MapManager:
             for cell in row:
                 if isinstance(cell, Recurso):
                     line_parts.append("O")
-                # ¡Importante! Revisar la clase más específica (hija) primero.
+                # revisamos la clase más específica (hija) primero.
                 elif isinstance(cell, MinaMovil):
                     line_parts.append("G1")
                 elif isinstance(cell, MinaLineal):
@@ -53,10 +53,6 @@ class MapManager:
         
         # Une todas las líneas para formar el mapa completo
         return "\n".join(map_lines)
-    
-# ... (init y otros métodos)
-
-    # Asumiendo que esta función está dentro de la clase MapManager
 
     def _colocar_recursos(self):
         """
@@ -91,13 +87,13 @@ class MapManager:
                     # 4. Si después de revisar todas las minas sigue siendo segura
                     if es_posicion_segura:
                         # Y además nos aseguramos de que la celda de la grilla esté libre
-                        if self.grid[x][y] is None:
+                        if self.grid[y][x] is None:
                             posicion_segura_encontrada = True
                 
                 # 5. Cuando el bucle 'while' termina, tenemos una posición segura garantizada
                 # Instanciamos el recurso y lo colocamos en el mapa
                 recurso = Recurso(resource_type,resources,pos_candidata)
-                self.grid[x][y] = recurso
+                self.grid[y][x] = recurso
                 self.resources.append(recurso)
 
         print(f"Se han distribuido los recursos de forma segura.")
@@ -144,13 +140,13 @@ class MapManager:
                         
                     # 4. Si se creó la mina, la colocamos en la grilla
                     if new_mine:
-                        self.grid[pos[0]][pos[1]] = new_mine
+                        self.grid[pos[1]][pos[0]] = new_mine
                         posicion_encontrada = True # Esto hará que el 'while' termine
         
 
     def posicion_libre(self, x, y):
         """Devuelve True si la celda (x, y) está vacía (None)."""
-        return self.grid[x][y] is None        
+        return self.grid[y][x] is None        
         
 
 
