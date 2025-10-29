@@ -1,5 +1,6 @@
 import pygame.sprite
-import CONSTANTES
+from Visual import CONSTANTES
+
 class Item(pygame.sprite.Sprite):
     def __init__(self, x,y, item_type):
         pygame.sprite.Sprite.__init__(self)
@@ -19,4 +20,17 @@ class Item(pygame.sprite.Sprite):
             (int(ancho * factor), int(alto * factor))
         )
         self.rect=self.image.get_rect()
-        self.rect=(x,y)
+        self.rect.center=(x,y)
+    def update(self,vehiculo,mapa):
+        #comprobar colisión
+        if self.rect.colliderect(vehiculo.shape):
+            if self.item_type==1:
+                print("mina explota")
+            elif self.item_type==0:
+                print("recurso levantado")
+            
+            grid_x = int(self.rect.x // CONSTANTES.CELDA_ANCHO)
+            grid_y = int(self.rect.y // CONSTANTES.CELDA_ALTO)
+            mapa.eliminar_elemento(grid_x, grid_y)
+            
+            self.kill()

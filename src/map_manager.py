@@ -1,7 +1,13 @@
 #GESTION DEL MAPA
 import random
-from classes import *
+from src.classes import *
 
+# Importar tu sprite visual
+from Visual.items import Item
+from Visual.CONSTANTES import *
+
+# Importar constantes (si las necesitás)
+from Visual import CONSTANTES
 # CLASE PARA INICIALIZAR EL MAPA
 class MapManager:
     #SE VA A INSTANCIAR EN EL game_engine.py
@@ -103,13 +109,13 @@ class MapManager:
         print(f"Se han distribuido los recursos de forma segura.")
 
     #FUNCION PARA COLOCAR LAS MINAS EN EL MAPA QUE SE EJECUTA PRIMERO QUE LA DE COLOCAR RECURSOS
-    def colocar_minas(self):
+    def colocar_minas(self,grupo_items):
         """
         Coloca las minas del JSON en el mapa, asegurándose de que
         la posición de su centro esté libre antes de crearla.
         """
         minas_config = self.mine_config.items()
-
+        imagen = None
         for mina_nombre, valores in minas_config:
             class_name = valores.get("class")
             
@@ -126,27 +132,38 @@ class MapManager:
                     new_mine = None
                     # 3. Usa if/elif para crear la mina correcta
                     if class_name == "MinaCircular":
+                        imagen =pygame.image.load("imagenes\minaCircular.png")
                         radius = valores.get("radius")
                         new_mine = MinaCircular(position=pos, radius=radius)
-                        self.mines.append(new_mine)
+                        
+                        
                         
                     elif class_name == "MinaLineal":
+                        imagen = pygame.image.load("imagenes/minaLineal.png")
                         length = valores.get("length")
                         orientation = valores.get("orientation")
                         new_mine = MinaLineal(position=pos, length=length, orientation=orientation)
-                        self.mines.append(new_mine)
+                        
                         
                     elif class_name == "MinaMovil":
+                        imagen = pygame.image.load("imagenes/minaMovil.png")
                         radius = valores.get("radius")
                         cycle = valores.get("cycle_duration")
                         new_mine = MinaMovil(position=pos, radius=radius, cycle_duration=cycle)
-                        self.mines.append(new_mine)
+
+                        
                         
                     # 4. Si se creó la mina, la colocamos en la grilla
-                    if new_mine:
-                        self.grid[pos[0]][pos[1]] = new_mine
-                        posicion_encontrada = True # Esto hará que el 'while' termine
-        
+                    if new_mine and imagen:
+                        # guardamos en la grilla
+                        self.grid[pos[1]][pos[0]] = new_mine
+                        self.mines.append(new_mine)
+                    
+                        # creamos el sprite visual
+                        sprite = Item(pos[0]*CONSTANTES.CELDA_ANCHO, pos[1]*CONSTANTES.CELDA_ALTO, imagen)
+                        grupo_items.add(sprite)
+
+                    posicion_encontrada = True
 
     def posicion_libre(self, x, y):
         """Devuelve True si la celda (x, y) está vacía (None)."""
@@ -154,7 +171,7 @@ class MapManager:
         
 
 
-    def generar_mapa_aleatorio(self):
+    def generar_mapa_aleatorio(self, grupo_items):
         """
         Limpia completamente el mapa y distribuye de nuevo todos los
         recursos y minas de forma aleatoria.
@@ -168,7 +185,7 @@ class MapManager:
 
         # 3. Reutilizar las funciones de colocación que ya funcionan.
         # Es crucial llamar a colocar_minas primero.
-        self.colocar_minas()
+        self.colocar_minas(grupo_items)
 
         
         self._colocar_recursos()       
@@ -195,18 +212,50 @@ class MapManager:
 #-----------------------------------------------------------------------------------------
 #DEBUGGING
 
-from classes import load_resource_config
+#from src.classes import load_resource_config
 
-RUTA_CONFIG = "config/default_config.json"
-config = load_resource_config(RUTA_CONFIG)
+#RUTA_CONFIG = "config/default_config.json"
+#config = load_resource_config(RUTA_CONFIG)
 
-mapa = MapManager(50,50,config)
-mapa.colocar_minas()
-mapa._colocar_recursos()
-print(mapa)
-mapa.generar_mapa_aleatorio()
-print(mapa)
+#mapa = MapManager(CONSTANTES.ANCHO_VENTANA,CONSTANTES.ALTO_VENTANA,config)
+#mapa.colocar_minas(grupo_items)
+#mapa._colocar_recursos()
+#print(mapa)
+#mapa.generar_mapa_aleatorio()
+#print(mapa)
+    def dibujar_mapa_debug(self, ventana):
+        """Dibuja una representación visual de las minas y recursos en la grilla."""
+        import pygame  # evitar dependencia circular
+        
+        for y in range(self.height):
+            for x in range(self.width):
+                elemento = self.grid[y][x]
+                if elemento is None:
+                    continue
 
+                # Determinar color según el tipo de elemento
+                if isinstance(elemento, MinaCircular):
+                    color = (255, 100, 100)  # rojo claro
+                elif isinstance(elemento, MinaLineal):
+                    color = (255, 180, 0)    # naranja
+                elif isinstance(elemento, MinaMovil):
+                    color = (255, 255, 0)    # amarillo
+                elif isinstance(elemento, Recurso):
+                    color = (0, 255, 0)      # verde
+                else:
+                    color = (200, 200, 200)  # gris para cualquier otro
+
+                # Calcular posición en píxeles según la celda
+                rect = pygame.Rect(
+                    x * CONSTANTES.CELDA_ANCHO,
+                    y * CONSTANTES.CELDA_ALTO,
+                    CONSTANTES.CELDA_ANCHO,
+                    CONSTANTES.CELDA_ALTO
+                )
+
+                pygame.draw.rect(ventana, color, rect)
+                
+                pygame.draw.rect(ventana, (50, 50, 50), rect, 1)  # borde fino
 
 
 
