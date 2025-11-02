@@ -18,12 +18,16 @@ class MapManager:
         self.height = height
         # Atributo para guardar los objetos de las minas
         self.mines = []
-        
         # Atributo para guardar los objetos de los recursos
         self.resources = []
         # Creamos una matriz para representar el mapa, inicialmente vacía (con None)
         self.grid = [[None for _ in range(width)] for _ in range(height)]
         print(f"Mapa de {width}x{height} creado.")
+
+
+    def get_recursos(self):
+        """Devuelve la lista de objetos de recursos."""
+        return self.resources
 
     def __str__(self):
         """
@@ -40,8 +44,8 @@ class MapManager:
             line_parts = []
             for cell in row:
                 if isinstance(cell, Recurso):
-                    line_parts.append("O")
-                # ¡Importante! Revisar la clase más específica (hija) primero.
+                    line_parts.append("R")
+                # revisamos la clase más específica (hija) primero.
                 elif isinstance(cell, MinaMovil):
                     line_parts.append("G1")
                 elif isinstance(cell, MinaLineal):
@@ -54,15 +58,11 @@ class MapManager:
                 elif isinstance(cell, MinaCircular):
                     line_parts.append("C")
                 else: # La celda está vacía (None)
-                    line_parts.append(".")
+                    line_parts.append("-")
             map_lines.append(" ".join(line_parts))
         
         # Une todas las líneas para formar el mapa completo
         return "\n".join(map_lines)
-    
-# ... (init y otros métodos)
-
-    # Asumiendo que esta función está dentro de la clase MapManager
 
     def _colocar_recursos(self):
         """
@@ -97,13 +97,13 @@ class MapManager:
                     # 4. Si después de revisar todas las minas sigue siendo segura
                     if es_posicion_segura:
                         # Y además nos aseguramos de que la celda de la grilla esté libre
-                        if self.grid[x][y] is None:
+                        if self.grid[y][x] is None:
                             posicion_segura_encontrada = True
                 
                 # 5. Cuando el bucle 'while' termina, tenemos una posición segura garantizada
                 # Instanciamos el recurso y lo colocamos en el mapa
                 recurso = Recurso(resource_type,resources,pos_candidata)
-                self.grid[x][y] = recurso
+                self.grid[y][x] = recurso
                 self.resources.append(recurso)
 
         print(f"Se han distribuido los recursos de forma segura.")
@@ -124,7 +124,7 @@ class MapManager:
             while not posicion_encontrada:
                 
                 # 1. Genera una posición candidata UNA SOLA VEZ por intento
-                pos = (random.randint(0, self.width - 1), random.randint(0, self.height - 1))
+                pos = (random.randint(5, self.width - 5), random.randint(5, self.height - 5))
 
                 # 2. Chequea si la posición está libre usando la función posicion_libre
                 if self.posicion_libre(pos[0], pos[1]):
@@ -154,20 +154,13 @@ class MapManager:
                         
                         
                     # 4. Si se creó la mina, la colocamos en la grilla
-                    if new_mine and imagen:
-                        # guardamos en la grilla
+                    if new_mine:
                         self.grid[pos[1]][pos[0]] = new_mine
-                        self.mines.append(new_mine)
-                    
-                        # creamos el sprite visual
-                        sprite = Item(pos[0]*CONSTANTES.CELDA_ANCHO, pos[1]*CONSTANTES.CELDA_ALTO, imagen)
-                        grupo_items.add(sprite)
-
-                    posicion_encontrada = True
+                        posicion_encontrada = True # Esto hará que el 'while' termine
 
     def posicion_libre(self, x, y):
         """Devuelve True si la celda (x, y) está vacía (None)."""
-        return self.grid[x][y] is None        
+        return self.grid[y][x] is None        
         
 
 
@@ -183,14 +176,55 @@ class MapManager:
         # 2. Reiniciar la matriz (grid) a su estado inicial (todo None).
         self.grid = [[None for _ in range(self.width)] for _ in range(self.height)]
 
-        # 3. Reutilizar las funciones de colocación que ya funcionan.
         # Es crucial llamar a colocar_minas primero.
         self.colocar_minas(grupo_items)
 
         
         self._colocar_recursos()       
   
+    def generar_mapa_pathfinding(self):
+        """
+        Crea y devuelve un mapa de pathfinding
+        basada en el radio de acción de las minas estaticas.
 
+        Las minas móviles se ignoran a propósito,
+        ya que A* es un algoritmo estático y la evasión de minas
+        móviles debe ser manejada por la IA del vehículo en tiempo real.
+
+        Devuelve:
+            list[list[int]]: Una grilla donde:
+                - 0: La celda es segura (caminable).
+                - 1: La celda está dentro del radio de una mina ESTÁTICA (O1, O2, T1, T2).
+        """
+        
+        # 1. Creamos un mapa nuevo, asumiendo que todo es caminable (0)
+        mapa_pf = [[0 for _ in range(self.width)] for _ in range(self.height)]
+
+        # 2. Iteramos por CADA celda (x, y) del mapa
+        for y in range(self.height):
+            for x in range(self.width):
+                pos_actual = (x, y)
+                
+                # 3. Comprobamos esta celda contra la lista de minas
+                for mina in self.mines:
+                    
+                    # 4. IGNORAMOS las minas móviles para el pathfinding estático
+                    if isinstance(mina, MinaMovil):
+                        continue 
+                        
+                    # 5. Usamos el método 'is_inside_area' de la mina
+                    if mina.is_inside_area(pos_actual):
+                        
+                        # Si está en el área, marcar como obstáculo (1)
+                        mapa_pf[y][x] = 1
+                        
+                        # Optimización: No necesitamos chequear otras minas
+                        # para esta celda, ya es un obstáculo.
+                        break 
+        
+        # 6. Devolvemos el mapa de 0s y 1s
+        return mapa_pf
+    
     def es_posicion_valida(self, x, y):
         """Devuelve True si la coordenada (x, y) está dentro del mapa."""
         return 0 <= x < self.width and 0 <= y < self.height
@@ -214,49 +248,19 @@ class MapManager:
 
 #from src.classes import load_resource_config
 
-#RUTA_CONFIG = "config/default_config.json"
-#config = load_resource_config(RUTA_CONFIG)
+RUTA_CONFIG = "config/default_config.json"
+config = load_resource_config(RUTA_CONFIG)
 
-#mapa = MapManager(CONSTANTES.ANCHO_VENTANA,CONSTANTES.ALTO_VENTANA,config)
-#mapa.colocar_minas(grupo_items)
-#mapa._colocar_recursos()
-#print(mapa)
-#mapa.generar_mapa_aleatorio()
-#print(mapa)
-    def dibujar_mapa_debug(self, ventana):
-        """Dibuja una representación visual de las minas y recursos en la grilla."""
-        import pygame  # evitar dependencia circular
-        
-        for y in range(self.height):
-            for x in range(self.width):
-                elemento = self.grid[y][x]
-                if elemento is None:
-                    continue
+mapa = MapManager(50,50,config)
 
-                # Determinar color según el tipo de elemento
-                if isinstance(elemento, MinaCircular):
-                    color = (255, 100, 100)  # rojo claro
-                elif isinstance(elemento, MinaLineal):
-                    color = (255, 180, 0)    # naranja
-                elif isinstance(elemento, MinaMovil):
-                    color = (255, 255, 0)    # amarillo
-                elif isinstance(elemento, Recurso):
-                    color = (0, 255, 0)      # verde
-                else:
-                    color = (200, 200, 200)  # gris para cualquier otro
+listaRecursos = mapa.get_recursos()
 
-                # Calcular posición en píxeles según la celda
-                rect = pygame.Rect(
-                    x * CONSTANTES.CELDA_ANCHO,
-                    y * CONSTANTES.CELDA_ALTO,
-                    CONSTANTES.CELDA_ANCHO,
-                    CONSTANTES.CELDA_ALTO
-                )
-
-                pygame.draw.rect(ventana, color, rect)
-                
-                pygame.draw.rect(ventana, (50, 50, 50), rect, 1)  # borde fino
-
+print(len(listaRecursos))
+mapa.colocar_minas()
+mapa._colocar_recursos()
+print(len(listaRecursos))
+recurso = listaRecursos[0]
+print(recurso.type)
 
 
 

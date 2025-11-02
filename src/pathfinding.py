@@ -96,27 +96,49 @@ def a_star(mapa, inicio, fin):
             heapq.heappush(lista_abierta, vecino)
             
     return None # Si el bucle termina, no se encontró un camino
+    # Coloca esta función en pathfinding.py, al mismo nivel que a_star
 
+def imprimir_mapa_pathfinding(mapa_pf):
+    """
+    Imprime una representación visual del mapa de pathfinding (0s y 1s).
+    - '.' representa una celda segura (0).
+    - 'X' representa un obstáculo (1).
+    """
+    print("--- Visualización del Mapa de Pathfinding ---")
+    for fila in mapa_pf:
+        linea_visual = []
+        for celda in fila:
+            if celda == 0:
+                linea_visual.append(".") # Seguro
+            else:
+                linea_visual.append("X") # Obstáculo (Mina)
+        
+        # Unimos cada caracter con un espacio para mejor legibilidad
+        print(" ".join(linea_visual))
+    print("---------------------------------------------")
 # --- Ejemplo de Uso ---
+from map_manager import *
 if __name__ == '__main__':
-    # Definimos un mapa: 0 = caminable, 1 = obstáculo (pared)
-    mapa = [
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    ]
+    from classes import load_resource_config
 
-    inicio = (0, 0)
-    fin = (9,5 )
+    RUTA_CONFIG = "config/default_config.json"
+    config = load_resource_config(RUTA_CONFIG)
 
-    camino = a_star(mapa, inicio, fin)
+    mapa = MapManager(50,50,config)
+
+    listaRecursos = mapa.get_recursos()
+
+    mapa.colocar_minas()
+    mapa._colocar_recursos()
+    #print(len(listaRecursos))
+    recurso = listaRecursos[0]
+    #print(recurso.type)
+    inicio = (random.randint(0,49),random.randint(0,49))
+    fin = recurso.position
+    print(mapa)
+    mapaBusqueda = mapa.generar_mapa_pathfinding()
+    imprimir_mapa_pathfinding(mapaBusqueda)
+    camino = a_star(mapaBusqueda, inicio, fin)
 
     if camino:
         print(f"Se encontró un camino de {inicio} a {fin}:")

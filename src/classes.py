@@ -198,7 +198,7 @@ class MinaLineal(Mina):
 class MinaMovil(MinaCircular):
     """
     Representa la Mina G1, que es circular pero aparece y desaparece.
-    [cite_start]Hereda de CircularMine para reutilizar la lógica de su área de efecto[cite: 43].
+    Hereda de CircularMine para reutilizar la lógica de su área de efecto
     """
     #INICIALIZAMOS CON LOS PARAMETROS DE POSICION, RADIO Y TIEMPO DE APARICION
     def __init__(self, position: tuple, radius: int, cycle_duration: int = 5):
