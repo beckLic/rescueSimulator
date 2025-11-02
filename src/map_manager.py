@@ -12,12 +12,16 @@ class MapManager:
         self.height = height
         # Atributo para guardar los objetos de las minas
         self.mines = []
-        
         # Atributo para guardar los objetos de los recursos
         self.resources = []
         # Creamos una matriz para representar el mapa, inicialmente vacía (con None)
         self.grid = [[None for _ in range(width)] for _ in range(height)]
         print(f"Mapa de {width}x{height} creado.")
+
+
+    def get_recursos(self):
+        """Devuelve la lista de objetos de recursos."""
+        return self.resources
 
     def __str__(self):
         """
@@ -34,7 +38,7 @@ class MapManager:
             line_parts = []
             for cell in row:
                 if isinstance(cell, Recurso):
-                    line_parts.append("O")
+                    line_parts.append("R")
                 # revisamos la clase más específica (hija) primero.
                 elif isinstance(cell, MinaMovil):
                     line_parts.append("G1")
@@ -48,7 +52,7 @@ class MapManager:
                 elif isinstance(cell, MinaCircular):
                     line_parts.append("C")
                 else: # La celda está vacía (None)
-                    line_parts.append(".")
+                    line_parts.append("-")
             map_lines.append(" ".join(line_parts))
         
         # Une todas las líneas para formar el mapa completo
@@ -162,14 +166,55 @@ class MapManager:
         # 2. Reiniciar la matriz (grid) a su estado inicial (todo None).
         self.grid = [[None for _ in range(self.width)] for _ in range(self.height)]
 
-        # 3. Reutilizar las funciones de colocación que ya funcionan.
         # Es crucial llamar a colocar_minas primero.
         self.colocar_minas()
 
         
         self._colocar_recursos()       
   
+    def generar_mapa_pathfinding(self):
+        """
+        Crea y devuelve un mapa de pathfinding
+        basada en el radio de acción de las minas estaticas.
 
+        Las minas móviles se ignoran a propósito,
+        ya que A* es un algoritmo estático y la evasión de minas
+        móviles debe ser manejada por la IA del vehículo en tiempo real.
+
+        Devuelve:
+            list[list[int]]: Una grilla donde:
+                - 0: La celda es segura (caminable).
+                - 1: La celda está dentro del radio de una mina ESTÁTICA (O1, O2, T1, T2).
+        """
+        
+        # 1. Creamos un mapa nuevo, asumiendo que todo es caminable (0)
+        mapa_pf = [[0 for _ in range(self.width)] for _ in range(self.height)]
+
+        # 2. Iteramos por CADA celda (x, y) del mapa
+        for y in range(self.height):
+            for x in range(self.width):
+                pos_actual = (x, y)
+                
+                # 3. Comprobamos esta celda contra la lista de minas
+                for mina in self.mines:
+                    
+                    # 4. IGNORAMOS las minas móviles para el pathfinding estático
+                    if isinstance(mina, MinaMovil):
+                        continue 
+                        
+                    # 5. Usamos el método 'is_inside_area' de la mina
+                    if mina.is_inside_area(pos_actual):
+                        
+                        # Si está en el área, marcar como obstáculo (1)
+                        mapa_pf[y][x] = 1
+                        
+                        # Optimización: No necesitamos chequear otras minas
+                        # para esta celda, ya es un obstáculo.
+                        break 
+        
+        # 6. Devolvemos el mapa de 0s y 1s
+        return mapa_pf
+    
     def es_posicion_valida(self, x, y):
         """Devuelve True si la coordenada (x, y) está dentro del mapa."""
         return 0 <= x < self.width and 0 <= y < self.height
@@ -197,13 +242,14 @@ RUTA_CONFIG = "config/default_config.json"
 config = load_resource_config(RUTA_CONFIG)
 
 mapa = MapManager(50,50,config)
+
+listaRecursos = mapa.get_recursos()
+
+print(len(listaRecursos))
 mapa.colocar_minas()
 mapa._colocar_recursos()
-print(mapa)
-mapa.generar_mapa_aleatorio()
-print(mapa)
-
-
-
+print(len(listaRecursos))
+recurso = listaRecursos[0]
+print(recurso.type)
 
 

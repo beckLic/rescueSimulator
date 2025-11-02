@@ -1,30 +1,34 @@
 #ALGORITMOS DE NAVEGACION
+
 import heapq
 
 class Nodo:
+    """
+    Una clase para representar un nodo en la cuadrícula de búsqueda.
+    Contiene la posición, el nodo padre (para reconstruir el camino) y los costos A*.
+    """
     def __init__(self, posicion=None, padre=None):
         self.posicion = posicion
         self.padre = padre
-        self.g = 0
-        self.h = 0
-        self.f = 0
-    
+        
+        # Costos del algoritmo A*
+        self.g = 0  # Costo desde el inicio hasta el nodo actual
+        self.h = 0  # Costo heurístico estimado desde el nodo actual hasta el final
+        self.f = 0  # Costo total (g + h)
+
     def __eq__(self, otro):
+        # Compara dos nodos por su posición
         return self.posicion == otro.posicion
-    
+
     def __lt__(self, otro):
+        # Permite que el heap de prioridad ordene los nodos por su costo f
         return self.f < otro.f
 
 
-# Definimos un costo "infinito" para los obstáculos
-COSTO_OBSTACULO = 100000 
-
-def a_star(mapa_costos, inicio, fin):
+def a_star(mapa, inicio, fin):
     """
-    Encuentra el camino de menor costo desde un inicio a un fin usando A*.
-    :param mapa_costos: Una lista de listas (cuadrícula 2D) donde cada celda
-                         tiene un costo de movimiento (ej. 1, 5, 50).
-                         Los obstáculos deben tener un costo muy alto (ej. COSTO_OBSTACULO).
+    Encuentra el camino más corto desde un punto de inicio a un punto final usando A*.
+    :param mapa: Una lista de listas (cuadrícula 2D) donde 0 es caminable y 1 es obstáculo.
     :param inicio: Una tupla (fila, columna) para el punto de partida.
     :param fin: Una tupla (fila, columna) para el punto de destino.
     :return: Una lista de tuplas que representa el camino, o None si no se encuentra.
@@ -34,43 +38,41 @@ def a_star(mapa_costos, inicio, fin):
     nodo_inicio = Nodo(inicio, None)
     nodo_fin = Nodo(fin, None)
     
-    lista_abierta = []
-    lista_cerrada = set() 
+    lista_abierta = []  # Un heap de prioridad para los nodos por visitar
+    lista_cerrada = set() # Un conjunto para las posiciones ya visitadas
     
+    # Añadimos el nodo inicial al heap
     heapq.heappush(lista_abierta, nodo_inicio)
     
-    # 2. Bucle principal
+    # 2. Bucle principal del algoritmo
     while lista_abierta:
         
+        # Obtenemos el nodo con el menor costo f del heap
         nodo_actual = heapq.heappop(lista_abierta)
         lista_cerrada.add(nodo_actual.posicion)
         
-        # 3. Comprobación de destino
+        # 3. Comprobación de si hemos llegado al destino
         if nodo_actual == nodo_fin:
             camino = []
             actual = nodo_actual
             while actual is not None:
                 camino.append(actual.posicion)
                 actual = actual.padre
-            return camino[::-1]
+            return camino[::-1]  # Devolvemos el camino invertido (de inicio a fin)
             
-        # 4. Generación de vecinos
+        # 4. Generación de nodos vecinos
         (fila, col) = nodo_actual.posicion
         vecinos = [(fila-1, col), (fila+1, col), (fila, col-1), (fila, col+1)]
         
         for siguiente_pos in vecinos:
             (vecino_fila, vecino_col) = siguiente_pos
             
-            # Asegurarse de que el vecino está dentro de los límites
-            if not (0 <= vecino_fila < len(mapa_costos) and 0 <= vecino_col < len(mapa_costos[0])):
-                continue
+            # Asegurarse de que el vecino está dentro de los límites del mapa
+            #if not (0 <= vecino_fila < len(mapa) and 0 <= vecino_col < len(mapa[0])):
+                #continue
             
-            # --- !!! CAMBIO CLAVE 1 !!! ---
-            # Obtener el costo de moverse A ESA celda
-            costo_movimiento = mapa_costos[vecino_fila][vecino_col]
-            
-            # Asegurarse de que el vecino es caminable (costo no es obstáculo)
-            if costo_movimiento >= COSTO_OBSTACULO:
+            # Asegurarse de que el vecino es un terreno caminable
+            if mapa[vecino_fila][vecino_col] != 0:
                 continue
             
             # Si el vecino ya está en la lista cerrada, lo ignoramos
@@ -80,60 +82,66 @@ def a_star(mapa_costos, inicio, fin):
             # Creamos el nodo vecino
             vecino = Nodo(siguiente_pos, nodo_actual)
             
-            # --- !!! CAMBIO CLAVE 2 !!! ---
-            # Calculamos el costo g: costo del padre + costo de moverse a esta nueva celda
-            vecino.g = nodo_actual.g + costo_movimiento
-            
+            # 5. Cálculo de costos
+            vecino.g = nodo_actual.g + 1
             # Heurística: Distancia Manhattan
-            # (La heurística NO debe multiplicarse por el costo, debe ser la distancia "pura")
             vecino.h = abs(vecino.posicion[0] - nodo_fin.posicion[0]) + abs(vecino.posicion[1] - nodo_fin.posicion[1])
             vecino.f = vecino.g + vecino.h
             
             # Si el vecino ya está en la lista abierta con un costo g mayor, lo ignoramos
-            # (Este chequeo es importante para encontrar el camino óptimo)
-            en_lista_abierta = False
-            for n in lista_abierta:
-                if n == vecino:
-                    en_lista_abierta = True
-                    if vecino.g < n.g:
-                        n.g = vecino.g # Actualizamos el costo g del nodo en la lista abierta
-                        n.f = vecino.f
-                        n.padre = nodo_actual # Actualizamos el padre
-                    break # Salimos del bucle
-            
-            if not en_lista_abierta:
-                # Añadimos el vecino al heap de prioridad
-                heapq.heappush(lista_abierta, vecino)
-            
-    return None
+            if any(n for n in lista_abierta if n == vecino and vecino.g > n.g):
+                continue
 
-# --- Ejemplo de Uso con Costos ---
+            # Añadimos el vecino al heap de prioridad
+            heapq.heappush(lista_abierta, vecino)
+            
+    return None # Si el bucle termina, no se encontró un camino
+    # Coloca esta función en pathfinding.py, al mismo nivel que a_star
+
+def imprimir_mapa_pathfinding(mapa_pf):
+    """
+    Imprime una representación visual del mapa de pathfinding (0s y 1s).
+    - '.' representa una celda segura (0).
+    - 'X' representa un obstáculo (1).
+    """
+    print("--- Visualización del Mapa de Pathfinding ---")
+    for fila in mapa_pf:
+        linea_visual = []
+        for celda in fila:
+            if celda == 0:
+                linea_visual.append(".") # Seguro
+            else:
+                linea_visual.append("X") # Obstáculo (Mina)
+        
+        # Unimos cada caracter con un espacio para mejor legibilidad
+        print(" ".join(linea_visual))
+    print("---------------------------------------------")
+# --- Ejemplo de Uso ---
+from map_manager import *
 if __name__ == '__main__':
-    # Costo 1 = normal
-    # Costo 5 = "lodo" o "terreno difícil" (A* lo evitará si puede)
-    # COSTO_OBSTACULO = pared
-    
-    mapa_costos = [
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 5, 5, 5, 5, 5, 5, 1, 1], # Una fila de "lodo"
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, COSTO_OBSTACULO, 1, 1, 1, 1, 1],
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    ]
+    from classes import load_resource_config
 
-    inicio = (0, 0)
-    fin = (0, 8)
+    RUTA_CONFIG = "config/default_config.json"
+    config = load_resource_config(RUTA_CONFIG)
 
-    camino = a_star(mapa_costos, inicio, fin)
+    mapa = MapManager(50,50,config)
+
+    listaRecursos = mapa.get_recursos()
+
+    mapa.colocar_minas()
+    mapa._colocar_recursos()
+    #print(len(listaRecursos))
+    recurso = listaRecursos[0]
+    #print(recurso.type)
+    inicio = (random.randint(0,49),random.randint(0,49))
+    fin = recurso.position
+    #print(mapa)
+    mapaBusqueda = mapa.generar_mapa_pathfinding()
+    imprimir_mapa_pathfinding(mapaBusqueda)
+    camino = a_star(mapaBusqueda, inicio, fin)
 
     if camino:
         print(f"Se encontró un camino de {inicio} a {fin}:")
         print(camino)
-        # Verás que el camino ahora rodea la fila 5 para evitar el costo '5'
     else:
         print(f"No se pudo encontrar un camino de {inicio} a {fin}.")
