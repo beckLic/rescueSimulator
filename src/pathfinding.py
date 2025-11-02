@@ -68,8 +68,8 @@ def a_star(mapa, inicio, fin):
             (vecino_fila, vecino_col) = siguiente_pos
             
             # Asegurarse de que el vecino está dentro de los límites del mapa
-            #if not (0 <= vecino_fila < len(mapa) and 0 <= vecino_col < len(mapa[0])):
-                #continue
+            if not (0 <= vecino_fila < len(mapa) and 0 <= vecino_col < len(mapa[0])):
+                continue
             
             # Asegurarse de que el vecino es un terreno caminable
             if mapa[vecino_fila][vecino_col] != 0:
@@ -135,7 +135,7 @@ if __name__ == '__main__':
     #print(recurso.type)
     inicio = (random.randint(0,49),random.randint(0,49))
     fin = recurso.position
-    #print(mapa)
+    print(mapa)
     mapaBusqueda = mapa.generar_mapa_pathfinding()
     imprimir_mapa_pathfinding(mapaBusqueda)
     camino = a_star(mapaBusqueda, inicio, fin)

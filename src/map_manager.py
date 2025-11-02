@@ -118,7 +118,7 @@ class MapManager:
             while not posicion_encontrada:
                 
                 # 1. Genera una posición candidata UNA SOLA VEZ por intento
-                pos = (random.randint(0, self.width - 1), random.randint(0, self.height - 1))
+                pos = (random.randint(5, self.width - 5), random.randint(5, self.height - 5))
 
                 # 2. Chequea si la posición está libre usando la función posicion_libre
                 if self.posicion_libre(pos[0], pos[1]):
