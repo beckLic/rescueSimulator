@@ -1,9 +1,10 @@
 import pygame
-import CONSTANTES
+from Visual import CONSTANTES
+
 class Jeep():#hay que hacer una general de vehículo y luego uno particular por tipo de auto
     def __init__(self, x, y):
         # Cargar imagen base mirando a la derecha
-        self.image_original = pygame.image.load("rescueSimulator\imagenes\jeep.png").convert_alpha()
+        self.image_original = pygame.image.load("imagenes\jeep.png").convert_alpha()
         
         # Toma los tamaños de la imagen
         ancho, alto = self.image_original.get_size()
@@ -26,6 +27,7 @@ class Jeep():#hay que hacer una general de vehículo y luego uno particular por 
 
         # Dirección actual del vehículo
         self.direccion = "derecha"
+        
 
     def movimiento(self, delta_x, delta_y):
         self.shape.x += delta_x
