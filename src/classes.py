@@ -54,6 +54,118 @@ class Vehiculo:
         return f"<{self.jugador_id}-{self.tipo} ({self.id}) en {self.posicion}>"
 
 
+    def _encontrar_mejor_objetivo(self, map_manager):
+        """
+        Implementa la ESTRATEGIA de priorización.
+        Filtra recursos por tipo  y elige el "mejor".
+        
+        Retorna: un objeto Recurso o None si no hay objetivos válidos.
+        """
+        recursos_disponibles = map_manager.resources()
+        objetivos_validos = []
+
+        # 1. Filtrar por tipo de carga permitida
+        for r in recursos_disponibles:
+            if r.type in self.tipo_carga_permitida:
+                objetivos_validos.append(r)
+        
+        if not objetivos_validos:
+            return None # No hay nada en el mapa que el vehiculo pueda recoger
+
+        # 2. Elegir el "mejor" (Estrategia simple: el más cercano)
+        # (Aquí podrías implementar la lógica de score/distancia)
+        mejor_objetivo = min(
+            objetivos_validos, 
+            key=lambda r: self.posicion.distance_to(pygame.math.Vector2(r.position))
+        )
+        
+        return mejor_objetivo
+
+    def update(self, map_manager, game_time):
+        """
+        La lógica principal del vehículo en cada frame.
+        Decide si buscar un objetivo, moverse, o esperar.
+        """
+        
+        # 1. Si no tengo un camino, busco uno (Planificación A*)
+        if not self.camino_actual and self.estado == "inactivo":
+            
+            # Paso 1: Decidir el Objetivo (Usando la función auxiliar)
+            self.objetivo_actual = self._encontrar_mejor_objetivo(map_manager)
+
+            if self.objetivo_actual:
+                print(f"{self.id} decidió ir a por {self.objetivo_actual.type} en {self.objetivo_actual.position}")
+
+                # Paso 2: Obtener el Mapa Estático
+                mapa_pf = map_manager.generar_mapa_pathfinding()
+                
+                # Definir inicio y fin para A* (cuidado con y,x vs x,y)
+                pos_inicio_yx = (int(self.posicion.y), int(self.posicion.x))
+                pos_fin_yx = self.objetivo_actual.position 
+                
+                # Paso 3: Calcular la Ruta
+                camino_encontrado = a_star(mapa_pf, pos_inicio_yx, pos_fin_yx)
+                
+                # Paso 4: Actualizar Estado
+                if camino_encontrado:
+                    self.camino_actual = camino_encontrado
+                    # Quitamos el primer paso (es nuestra posición actual)
+                    self.camino_actual.pop(0) 
+                    self.estado = "buscando"
+                else:
+                    # El objetivo es inaccesible, lo olvidamos
+                    # En el próximo frame, _encontrar_mejor_objetivo
+                    # (con suerte) elegirá otro.
+                    print(f"{self.id} no encontró camino a {self.objetivo_actual.position}")
+                    self.objetivo_actual = None
+                    self.estado = "inactivo" 
+                    # (Aquí una IA más avanzada "marcaría" ese recurso
+                    # como inalcanzable temporalmente)
+
+        # 2. Si tengo un camino, intento moverme (Evasión en Tiempo Real)
+        if self.camino_actual and self.estado == "buscando":
+            
+            # Obtenemos la siguiente posición a la que queremos movernos
+            # (El camino A* está en formato (fila, col) -> (y, x))
+            siguiente_pos_yx = self.camino_actual[0]
+            siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
+
+            peligro_detectado = False
+            
+            # Revisar contra minas móviles
+            for mina in map_manager.mines:
+                if isinstance(mina, MinaMovil):
+                    # Preguntamos si la mina ESTÁ ACTIVA y si nuestra
+                    # próxima posición está dentro de su radio.
+                    if mina.is_active and mina.is_inside_area(siguiente_pos_xy):
+                        peligro_detectado = True
+                        print(f"{self.id} FRENANDO: ¡Mina G1 activa en {siguiente_pos_xy}!")
+                        break # Encontramos un peligro, no necesitamos seguir buscando
+
+            # (Aquí también deberías revisar colisiones con otros vehículos)
+            # for otro_vehiculo in ...:
+            #    if otro_vehiculo.posicion == siguiente_pos_xy:
+            #        peligro_detectado = True
+            #        break
+
+            # 4. Decidir si moverse o esperar
+            if not peligro_detectado:
+                # Es seguro moverse
+                self.posicion = pygame.math.Vector2(siguiente_pos_xy)
+                self.camino_actual.pop(0) # Quitamos el paso que acabamos de dar
+                
+                # (Aquí iría la lógica de recolección si llegamos al objetivo)
+                # if self.posicion == self.objetivo_actual.position:
+                #     self.recolectar(self.objetivo_actual)
+                #     self.estado = "volviendo" # (O 'inactivo' si puede seguir)
+                #     self.camino_actual = None
+            
+            # else:
+                # Si hay peligro, NO HACEMOS NADA.
+                # El vehículo simplemente "espera" en su posición actual
+                # durante este frame, y volverá a evaluar en el siguiente.
+                pass
+#-----------------------------------------------------------------------------------------------------------   
 class Jeep(Vehiculo):
     """
     Representa un vehículo tipo Jeep.
@@ -66,7 +178,7 @@ class Jeep(Vehiculo):
         self.max_viajes = 2  # 
         self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]  # 
 
-
+#------------------------------------------------------------------------------------------------------------
 class Moto(Vehiculo):
     """
     Representa un vehículo tipo Moto.
@@ -78,8 +190,7 @@ class Moto(Vehiculo):
         self.tipo = "moto"
         self.max_viajes = 1  # 
         self.tipo_carga_permitida = ["Persona"]  # 
-
-
+#-------------------------------------------------------------------------------------------------------------
 class Camion(Vehiculo):
     """
     Representa un vehículo tipo Camión.
@@ -91,8 +202,7 @@ class Camion(Vehiculo):
         self.tipo = "camion"
         self.max_viajes = 3  # 
         self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"] 
-
-
+#-------------------------------------------------------------------------------------------------------------
 class Auto(Vehiculo):
     """
     Representa un vehículo tipo Auto.
@@ -104,7 +214,6 @@ class Auto(Vehiculo):
         self.tipo = "auto"
         self.max_viajes = 1   
         self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]   
-
 #---------------------------------------------------------------------------------------------------------
 #CLASES DE RECURSOS
 
@@ -127,7 +236,7 @@ def load_resource_config(filepath: str) -> dict:
 
 #SE CARGA LA CONFIGURACION UNA VEZ CUANDO EMPIEZA EL SIMULADOR
 RESOURCE_STATS = load_resource_config('config/default_config.json')
-
+#-------------------------------------------------------------------------------------------------------------
 class Recurso:
     #PARA INCIALIZAR UN RECURSO SE PASA COMO PARAMETRO EL TIPO DE RECURSO, EL DICCIONARIO Y LA POSICION
     def __init__(self, resource_type: str, stats_config: dict, position: tuple):
@@ -139,14 +248,13 @@ class Recurso:
         self.type = resource_type
         self.score = stats['score']
         self.position = position
-
 #-------------------------------------------------------------------------------------------------------
 #CLASE DE MINAS
 
 class Mina:
     def __init__(self, position: tuple):
         self.position = position
-
+#-------------------------------------------------------------------------------------------------------------
 class MinaCircular(Mina):
     """
     Representa una mina estática con un área de efecto circular.
@@ -165,7 +273,7 @@ class MinaCircular(Mina):
             return True
         else:
             return False
-
+#-------------------------------------------------------------------------------------------------------------
 class MinaLineal(Mina):
     """
     Representa una mina estática con un área de efecto lineal.
@@ -194,7 +302,7 @@ class MinaLineal(Mina):
             y_in_range = (my - half_len) <= py <= (my + half_len) # y la 'y' debe estar dentro del segmento de la línea.
             #OPERADOR AND PARA RETURNAR TRUE O FALSE
             return x_match and y_in_range
-
+#-------------------------------------------------------------------------------------------------------------
 class MinaMovil(MinaCircular):
     """
     Representa la Mina G1, que es circular pero aparece y desaparece.
