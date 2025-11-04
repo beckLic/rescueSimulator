@@ -70,12 +70,14 @@ class Vehiculo:
             return None # No hay nada en el mapa que el vehiculo pueda recoger
 
         # 2. Elegir el "mejor" (Estrategia simple: el más cercano)
+        # (Aquí podrías implementar la lógica de score/distancia)
         mejor_objetivo = min(
             objetivos_validos, 
             key=lambda r: self.posicion.distance_to(pygame.math.Vector2(r.position))
         )
         
         return mejor_objetivo
+
 
     def _calcular_camino(self, map_manager, destino_yx):
         """
@@ -137,6 +139,7 @@ class Vehiculo:
 
             if self.objetivo_actual:
                 print(f"{self.id} decidió ir a por {self.objetivo_actual.type} en {self.objetivo_actual.position}")
+
                 
                 # Paso 2: Calcular la Ruta hacia el objetivo
                 self.camino_actual = self._calcular_camino(map_manager, self.objetivo_actual.position)
@@ -233,6 +236,77 @@ class Vehiculo:
                     self.estado = "inactivo" # transicion de estado
             
             # else: Peligro detectado, espera.
+
+
+                # Paso 2: Obtener el Mapa Estático
+                mapa_pf = map_manager.generar_mapa_pathfinding()
+                
+                # Definir inicio y fin para A* (cuidado con y,x vs x,y)
+                pos_inicio_yx = (int(self.posicion.y), int(self.posicion.x))
+                pos_fin_yx = self.objetivo_actual.position 
+                
+                # Paso 3: Calcular la Ruta
+                camino_encontrado = pathfinding.a_star(mapa_pf, pos_inicio_yx, pos_fin_yx)
+                
+                # Paso 4: Actualizar Estado
+                if camino_encontrado:
+                    self.camino_actual = camino_encontrado
+                    # Quitamos el primer paso (es nuestra posición actual)
+                    self.camino_actual.pop(0) 
+                    self.estado = "buscando"
+                else:
+                    # El objetivo es inaccesible, lo olvidamos
+                    # En el próximo frame, _encontrar_mejor_objetivo
+                    # (con suerte) elegirá otro.
+                    print(f"{self.id} no encontró camino a {self.objetivo_actual.position}")
+                    self.objetivo_actual = None
+                    self.estado = "inactivo" 
+                    # (Aquí una IA más avanzada "marcaría" ese recurso
+                    # como inalcanzable temporalmente)
+
+        # 2. Si tengo un camino, intento moverme (Evasión en Tiempo Real)
+        if self.camino_actual and self.estado == "buscando":
+            
+            # Obtenemos la siguiente posición a la que queremos movernos
+            # (El camino A* está en formato (fila, col) -> (y, x))
+            siguiente_pos_yx = self.camino_actual[0]
+            siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
+
+            peligro_detectado = False
+            
+            # Revisar contra minas móviles
+            for mina in map_manager.mines:
+                if isinstance(mina, MinaMovil):
+                    # Preguntamos si la mina ESTÁ ACTIVA y si nuestra
+                    # próxima posición está dentro de su radio.
+                    if mina.is_active and mina.is_inside_area(siguiente_pos_xy):
+                        peligro_detectado = True
+                        print(f"{self.id} FRENANDO: ¡Mina G1 activa en {siguiente_pos_xy}!")
+                        break # Encontramos un peligro, no necesitamos seguir buscando
+
+            # (Aquí también deberías revisar colisiones con otros vehículos)
+            # for otro_vehiculo in ...:
+            #    if otro_vehiculo.posicion == siguiente_pos_xy:
+            #        peligro_detectado = True
+            #        break
+
+            # 4. Decidir si moverse o esperar
+            if not peligro_detectado:
+                # Es seguro moverse
+                self.posicion = pygame.math.Vector2(siguiente_pos_xy)
+                self.camino_actual.pop(0) # Quitamos el paso que acabamos de dar
+                
+                # (Aquí iría la lógica de recolección si llegamos al objetivo)
+                # if self.posicion == self.objetivo_actual.position:
+                #     self.recolectar(self.objetivo_actual)
+                #     self.estado = "volviendo" # (O 'inactivo' si puede seguir)
+                #     self.camino_actual = None
+            
+            # else:
+                # Si hay peligro, NO HACEMOS NADA.
+                # El vehículo simplemente "espera" en su posición actual
+                # durante este frame, y volverá a evaluar en el siguiente.
+                pass
 #-----------------------------------------------------------------------------------------------------------   
 class Jeep(Vehiculo):
     """
