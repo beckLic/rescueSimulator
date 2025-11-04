@@ -12,8 +12,8 @@ class Nodo:
         self.padre = padre
         
         # Costos del algoritmo A*
-        self.g = 0  # Costo desde el inicio hasta el nodo actual
-        self.h = 0  # Costo heurístico estimado desde el nodo actual hasta el final
+        self.g = 0  # Costo desde el inicio hasta el nodo actual (g)
+        self.h = 0  # Costo heurístico estimado desde el nodo actual hasta el final (h)
         self.f = 0  # Costo total (g + h)
 
     def __eq__(self, otro):
@@ -96,7 +96,6 @@ def a_star(mapa, inicio, fin):
             heapq.heappush(lista_abierta, vecino)
             
     return None # Si el bucle termina, no se encontró un camino
-    # Coloca esta función en pathfinding.py, al mismo nivel que a_star
 
 def imprimir_mapa_pathfinding(mapa_pf):
     """
