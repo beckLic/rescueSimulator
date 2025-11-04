@@ -35,8 +35,8 @@ run = True
 grupo_items= pygame.sprite.Group()
 # Cargar minas en el mapa y en el grupo
 mapa.colocar_minas(grupo_items)
-
-# --- Botones ---
+mapa._colocar_recursos(grupo_items)
+#Botones
 boton_init = pygame.Rect(50, 30, 120, 40)
 boton_play = pygame.Rect(200, 30, 120, 40)
 simulacion_iniciada = False
@@ -51,11 +51,15 @@ while run:
     reloj.tick(60)
     ventana.fill(CONSTANTES.COLOR_NEGRO)
     dibujar_grid()
-    # Mostrar minas y recursos en la grilla (debug visual)
-    mapa.dibujar_mapa_debug(ventana)
+
     jeep1.dibujar(ventana)
     #dibujar items
     grupo_items.draw(ventana)
+
+    for item in grupo_items:
+        if item.item_type == "mina":
+            item.draw_radius(ventana) 
+
     # Obtener todas las teclas presionadas
     keys = pygame.key.get_pressed()
 
