@@ -1,7 +1,7 @@
 #CLASES DE VEHICULOS
 import math
 import pygame
-
+import pathfinding
 class Vehiculo:
     """
     Clase base que representa a cualquier vehículo en el simulador.
