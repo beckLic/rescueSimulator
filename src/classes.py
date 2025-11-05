@@ -2,19 +2,21 @@
 import math
 import pygame
 import pathfinding
+import map_manager
 class Vehiculo:
     """
     Clase base que representa a cualquier vehículo en el simulador.
     Contiene todos los atributos y métodos comunes.
     """ 
     #CONSTRUCTOR DE LA CLASE
-    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple):
+    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, posicion_base: tuple):
         # --- Atributos de Identificación ---
         self.id = id
         self.jugador_id = jugador_id
         
         # --- Atributos de Posición y Estado ---
         self.posicion = pygame.math.Vector2(pos_inicial)
+        self.posicion_base = posicion_base #posicion de su base para volver
         self.objetivo_actual = None
         self.camino_actual = []
         self.velocidad = 3 # Píxeles por fotograma
@@ -29,23 +31,18 @@ class Vehiculo:
         self.tipo_carga_permitida = []
         self.max_viajes = 0
 
-    def mover(self):
-        """
-        Lógica de movimiento del vehículo para seguir un camino.
-        (A implementar)
-        """
-        if self.camino_actual:
-            print(f"{self.id} se está moviendo a {self.camino_actual[0]}...")
-        pass
 
     def recolectar(self, recurso):
         """
         Añade un recurso a la carga si es del tipo permitido.
-        (A implementar)
         """
         print(f"{self.id} ha recolectado {recurso}.")
         self.carga_actual.append(recurso)
         self.viajes_realizados += 1
+
+        # 2. Eliminar el recurso del mapa
+        pos_recurso_xy = (recurso.position[1], recurso.position[0])
+        map_manager.eliminar_elemento(pos_recurso_xy[0], pos_recurso_xy[1])
 
     def __repr__(self):
         """
@@ -73,7 +70,6 @@ class Vehiculo:
             return None # No hay nada en el mapa que el vehiculo pueda recoger
 
         # 2. Elegir el "mejor" (Estrategia simple: el más cercano)
-        # (Aquí podrías implementar la lógica de score/distancia)
         mejor_objetivo = min(
             objetivos_validos, 
             key=lambda r: self.posicion.distance_to(pygame.math.Vector2(r.position))
@@ -81,90 +77,162 @@ class Vehiculo:
         
         return mejor_objetivo
 
+    def _calcular_camino(self, map_manager, destino_yx):
+        """
+        Función helper para calcular la ruta A* y manejar errores.
+        Retorna el camino encontrado o None.
+        """
+        try:
+            mapa_pf = map_manager.generar_mapa_pathfinding()
+            pos_inicio_yx = (int(self.posicion.y), int(self.posicion.x))
+            
+            camino_encontrado = pathfinding.a_star(mapa_pf, pos_inicio_yx, destino_yx)
+            
+            if camino_encontrado:
+                camino_encontrado.pop(0) # Quitamos el primer paso por ser posicion actual
+                return camino_encontrado
+            else:
+                return None
+        except Exception as e:
+            print(f"Error calculando A* para {self.id}: {e}")
+            return None
+
+    def _evaluar_siguiente_paso(self, map_manager):
+        """
+        Revisa si el siguiente paso en el camino es peligroso (minas G1, vehículos).
+        Retorna: (siguiente_pos_yx, peligro_detectado)
+        """
+        if not self.camino_actual:
+            return None, True # No hay camino, se considera "peligro" para no moverse
+
+        siguiente_pos_yx = self.camino_actual[0]
+        siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
+
+        peligro_detectado = False
+        
+        # Revisar contra minas móviles
+        for mina in map_manager.mines:
+            if isinstance(mina, MinaMovil):
+                if mina.is_active and mina.is_inside_area(siguiente_pos_xy):
+                    peligro_detectado = True
+                    print(f"{self.id} FRENANDO: ¡Mina G1 activa en {siguiente_pos_xy}!")
+                    break 
+
+        # implementar colision con vehiculos acá
+            
+        return siguiente_pos_yx, peligro_detectado
+
+
     def update(self, map_manager, game_time):
         """
-        La lógica principal del vehículo en cada frame.
-        Decide si buscar un objetivo, moverse, o esperar.
+        La lógica principal del vehículo en cada frame, organizada como una Máquina de Estados.
         """
         
-        # 1. Si no tengo un camino, busco uno (Planificación A*)
-        if not self.camino_actual and self.estado == "inactivo":
-            
-            # Paso 1: Decidir el Objetivo (Usando la función auxiliar)
+        # =======================================================
+        # ESTADO 1: INACTIVO (Buscando qué hacer)
+        # =======================================================
+        if self.estado == "inactivo":
+            # Paso 1: Decidir el Objetivo
             self.objetivo_actual = self._encontrar_mejor_objetivo(map_manager)
 
             if self.objetivo_actual:
                 print(f"{self.id} decidió ir a por {self.objetivo_actual.type} en {self.objetivo_actual.position}")
-
-                # Paso 2: Obtener el Mapa Estático
-                mapa_pf = map_manager.generar_mapa_pathfinding()
                 
-                # Definir inicio y fin para A* (cuidado con y,x vs x,y)
-                pos_inicio_yx = (int(self.posicion.y), int(self.posicion.x))
-                pos_fin_yx = self.objetivo_actual.position 
+                # Paso 2: Calcular la Ruta hacia el objetivo
+                self.camino_actual = self._calcular_camino(map_manager, self.objetivo_actual.position)
                 
-                # Paso 3: Calcular la Ruta
-                camino_encontrado = a_star(mapa_pf, pos_inicio_yx, pos_fin_yx)
-                
-                # Paso 4: Actualizar Estado
-                if camino_encontrado:
-                    self.camino_actual = camino_encontrado
-                    # Quitamos el primer paso (es nuestra posición actual)
-                    self.camino_actual.pop(0) 
-                    self.estado = "buscando"
+                # Paso 3: Transición de Estado
+                if self.camino_actual:
+                    self.estado = "buscando" # transicion de estado
                 else:
                     # El objetivo es inaccesible, lo olvidamos
-                    # En el próximo frame, _encontrar_mejor_objetivo
-                    # (con suerte) elegirá otro.
                     print(f"{self.id} no encontró camino a {self.objetivo_actual.position}")
                     self.objetivo_actual = None
-                    self.estado = "inactivo" 
-                    # (Aquí una IA más avanzada "marcaría" ese recurso
-                    # como inalcanzable temporalmente)
-
-        # 2. Si tengo un camino, intento moverme (Evasión en Tiempo Real)
-        if self.camino_actual and self.estado == "buscando":
+                    #Se queda 'inactivo' para intentarlo de nuevo en el próximo frame
             
-            # Obtenemos la siguiente posición a la que queremos movernos
-            # (El camino A* está en formato (fila, col) -> (y, x))
-            siguiente_pos_yx = self.camino_actual[0]
-            siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
+            # else: No hay objetivos en el mapa. El vehículo se queda 'inactivo'.
 
-            peligro_detectado = False
+        # =======================================================
+        # ESTADO 2: BUSCANDO (Yendo hacia un recurso)
+        # =======================================================
+        elif self.estado == "buscando":
             
-            # Revisar contra minas móviles
-            for mina in map_manager.mines:
-                if isinstance(mina, MinaMovil):
-                    # Preguntamos si la mina ESTÁ ACTIVA y si nuestra
-                    # próxima posición está dentro de su radio.
-                    if mina.is_active and mina.is_inside_area(siguiente_pos_xy):
-                        peligro_detectado = True
-                        print(f"{self.id} FRENANDO: ¡Mina G1 activa en {siguiente_pos_xy}!")
-                        break # Encontramos un peligro, no necesitamos seguir buscando
+            if not self.camino_actual:
+                # Si el camino desaparece
+                print(f"{self.id} perdió su camino, volviendo a inactivo.")
+                self.estado = "inactivo"
+                return
 
-            # (Aquí también deberías revisar colisiones con otros vehículos)
-            # for otro_vehiculo in ...:
-            #    if otro_vehiculo.posicion == siguiente_pos_xy:
-            #        peligro_detectado = True
-            #        break
-
-            # 4. Decidir si moverse o esperar
+            # Revisar peligros en el siguiente paso
+            siguiente_pos_yx, peligro_detectado = self._evaluar_siguiente_paso(map_manager)
+            
             if not peligro_detectado:
                 # Es seguro moverse
+                siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
                 self.posicion = pygame.math.Vector2(siguiente_pos_xy)
-                self.camino_actual.pop(0) # Quitamos el paso que acabamos de dar
+                self.camino_actual.pop(0) # Del vehiculo avanza un paso en su camino
                 
-                # (Aquí iría la lógica de recolección si llegamos al objetivo)
-                # if self.posicion == self.objetivo_actual.position:
-                #     self.recolectar(self.objetivo_actual)
-                #     self.estado = "volviendo" # (O 'inactivo' si puede seguir)
-                #     self.camino_actual = None
+                # --- LÓGICA DE LLEGADA Y RECOLECCIÓN ---
+                if not self.camino_actual:
+                    print(f"{self.id} llegó al recurso {self.objetivo_actual.type}.")
+                    
+                    # 1. Recolectar
+                    self.recolectar(self.objetivo_actual)
+                    self.objetivo_actual = None
+                    
+                    # 3. DECIDIR QUÉ HACER AHORA
+                    if self.viajes_realizados >= self.max_viajes:
+                        print(f"{self.id} alcanzó su max_viajes. Volviendo a base.")
+                        self.estado = "volviendo" # transicion de estado
+                    else:
+                        print(f"{self.id} puede seguir recolectando. Buscando nuevo objetivo.")
+                        self.estado = "inactivo" # transicion de estado
             
-            # else:
-                # Si hay peligro, NO HACEMOS NADA.
-                # El vehículo simplemente "espera" en su posición actual
-                # durante este frame, y volverá a evaluar en el siguiente.
-                pass
+            # else: Peligro detectado. El vehículo no se mueve (no hace pop)
+            # y lo re-evaluará en el próximo frame.
+
+        # =======================================================
+        # ESTADO 3: VOLVIENDO (Yendo hacia la base)
+        # =======================================================
+        elif self.estado == "volviendo":
+            
+            # Paso 1: Calcular el camino a la base (SOLO SI NO LO TIENE)
+            if not self.camino_actual:
+                print(f"{self.id} está calculando la ruta de regreso a la base.")
+                
+                # Ojo: A* necesita (y,x) para el destino
+                pos_base_yx = (int(self.pos_base[1]), int(self.pos_base[0]))
+                self.camino_actual = self._calcular_camino(map_manager, pos_base_yx)
+                
+                if not self.camino_actual:
+                    print(f"{self.id} ¡NO PUEDE ENCONTRAR CAMINO A LA BASE! ATASCADO.")
+                    # El vehículo se quedará en este estado, intentando recalcular
+                    # cada frame hasta que pueda (p.ej. si una mina G1 se mueve)
+                    return
+
+            # Paso 2: Moverse (con la misma lógica de evasión)
+            siguiente_pos_yx, peligro_detectado = self._evaluar_siguiente_paso(map_manager)
+            
+            if not peligro_detectado:
+                siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
+                self.posicion = pygame.math.Vector2(siguiente_pos_xy)
+                self.camino_actual.pop(0)
+
+                # --- LÓGICA DE LLEGADA A LA BASE ---
+                if not self.camino_actual:
+                    print(f"{self.id} llegó a la base y entregó la carga.")
+                    
+                    # 1. Registrar puntaje (esto se haría en el GameEngine)
+                    # game_engine.registrar_entrega(self.jugador_id, self.carga_actual)
+                    
+                    # 2. Resetear el vehículo
+                    self.carga_actual.clear()
+                    self.viajes_realizados = 0
+                    
+                    # 3. Transición de estado
+                    self.estado = "inactivo" # transicion de estado
+            
+            # else: Peligro detectado, espera.
 #-----------------------------------------------------------------------------------------------------------   
 class Jeep(Vehiculo):
     """
