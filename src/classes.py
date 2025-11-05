@@ -32,7 +32,7 @@ class Vehiculo:
         self.max_viajes = 0
 
 
-    def recolectar(self, recurso):
+    def recolectar(self, recurso, map_manager):
         """
         Añade un recurso a la carga si es del tipo permitido.
         """
@@ -177,7 +177,7 @@ class Vehiculo:
                     print(f"{self.id} llegó al recurso {self.objetivo_actual.type}.")
                     
                     # 1. Recolectar
-                    self.recolectar(self.objetivo_actual)
+                    self.recolectar(self.objetivo_actual,map_manager)
                     self.objetivo_actual = None
                     
                     # 3. DECIDIR QUÉ HACER AHORA
@@ -399,3 +399,5 @@ class MinaMovil(MinaCircular):
         
         # Si está activa, utiliza la misma lógica de su clase padre (CircularMine).
         return super().is_inside_area(point)
+    
+

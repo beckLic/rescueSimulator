@@ -20,6 +20,8 @@ class MapManager:
         self.mines = []
         # Atributo para guardar los objetos de los recursos
         self.resources = []
+        # atributo para guardar los objetos de los vehiculos
+        self.vehiculos = []
         # Creamos una matriz para representar el mapa, inicialmente vacía (con None)
         self.grid = [[None for _ in range(width)] for _ in range(height)]
         print(f"Mapa de {width}x{height} creado.")
