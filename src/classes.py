@@ -177,7 +177,7 @@ class Vehiculo:
                     print(f"{self.id} llegó al recurso {self.objetivo_actual.type}.")
                     
                     # 1. Recolectar
-                    self.recolectar(self.objetivo_actual)
+                    self.recolectar(self.objetivo_actual,map_manager)
                     self.objetivo_actual = None
                     
                     # 3. DECIDIR QUÉ HACER AHORA
