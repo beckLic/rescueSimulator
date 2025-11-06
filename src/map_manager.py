@@ -3,7 +3,7 @@ import random
 from src.classes import *
 
 # Importar tu sprite visual
-from Visual.items import Item
+
 from Visual.CONSTANTES import *
 
 # Importar constantes (si las necesitás)
@@ -104,28 +104,20 @@ class MapManager:
                 
                 # 5. Cuando el bucle 'while' termina, tenemos una posición segura garantizada
                 # Instanciamos el recurso y lo colocamos en el mapa
-                
-                recurso = Recurso(resource_type,resources,pos_candidata)
-                self.grid[y][x] = recurso
-                self.resources.append(recurso)
-                
+                pos_candidata = (x, y)
                 imagen = pygame.image.load(f"imagenes/{resource_type}.png")
-                
-
-                # Escalar la imagen
                 imagen_escalada = pygame.transform.smoothscale(
                     imagen,
                     (int(CONSTANTES.CELDA_ANCHO), int(CONSTANTES.CELDA_ALTO))
                 )
-
-                # Calcular píxeles 
-                pixel_x = x * CONSTANTES.CELDA_ANCHO + (CONSTANTES.CELDA_ANCHO / 2)
-                pixel_y = y * CONSTANTES.CELDA_ALTO + (CONSTANTES.CELDA_ALTO / 2)
+                recurso = Recurso(resource_type, resources, pos_candidata, imagen_escalada)
+                self.grid[y][x] = recurso
+                self.resources.append(recurso)
                 
-                sprite_recurso = Item(pixel_x, pixel_y, imagen_escalada, recurso.type)
+                  
+                # Y añadimos ESE MISMO objeto al grupo de sprites
+                grupo_items.add(recurso)
                 
-                # 5. Añadir al grupo para que se dibuje
-                grupo_items.add(sprite_recurso)
         print(f"Se han distribuido los recursos de forma segura.")
 
     def colocar_minas(self,grupo_items):
@@ -149,49 +141,37 @@ class MapManager:
                 if self.posicion_libre(pos[0], pos[1]):
                     
                     new_mine = None
+                    imagen = None
                     # 3. Usa if/elif para crear la mina correcta
                     if class_name == "MinaCircular":
-                        imagen =pygame.image.load("imagenes\minaCircular.png")
+                        imagen = pygame.image.load("imagenes\minaCircular.png")
                         radius = valores.get("radius")
-                        new_mine = MinaCircular(position=pos, radius=radius)
-                        
+                        # Escalar imagen
+                        imagen_escalada = pygame.transform.smoothscale(imagen, (int(CONSTANTES.CELDA_ANCHO), int(CONSTANTES.CELDA_ALTO)))
+                        new_mine = MinaCircular(position=pos, radius=radius, imagen=imagen_escalada)
                         
                         
                     elif class_name == "MinaLineal":
                         imagen = pygame.image.load("imagenes/minaLineal.png")
                         length = valores.get("length")
                         orientation = valores.get("orientation")
-                        new_mine = MinaLineal(position=pos, length=length, orientation=orientation)
-                        
+                        imagen_escalada = pygame.transform.smoothscale(imagen, (int(CONSTANTES.CELDA_ANCHO), int(CONSTANTES.CELDA_ALTO)))
+                        new_mine = MinaLineal(position=pos, length=length, orientation=orientation, imagen=imagen_escalada)
                         
                     elif class_name == "MinaMovil":
                         imagen = pygame.image.load("imagenes/minaMovil.png")
                         radius = valores.get("radius")
                         cycle = valores.get("cycle_duration")
-                        new_mine = MinaMovil(position=pos, radius=radius, cycle_duration=cycle)
-
+                        imagen_escalada = pygame.transform.smoothscale(imagen, (int(CONSTANTES.CELDA_ANCHO), int(CONSTANTES.CELDA_ALTO)))
+                        new_mine = MinaMovil(position=pos, radius=radius, cycle_duration=cycle, imagen=imagen_escalada)
                         
                         
                     # 4. Si se creó la mina, la colocamos en la grilla
                     if new_mine:
                         self.grid[pos[1]][pos[0]] = new_mine
                         posicion_encontrada = True 
-
-                        if imagen:
-                            # Escalar imagen
-                            imagen_escalada = pygame.transform.smoothscale(
-                                imagen,
-                                (int(CONSTANTES.CELDA_ANCHO), int(CONSTANTES.CELDA_ALTO))
-                            )
-                            # Calcular Píxeles
-                            pixel_x = pos[0] * CONSTANTES.CELDA_ANCHO + (CONSTANTES.CELDA_ANCHO / 2)
-                            pixel_y = pos[1] * CONSTANTES.CELDA_ALTO + (CONSTANTES.CELDA_ALTO / 2)
-                            mina_radius = None
-                            if hasattr(new_mine, 'radius'):
-                                mina_radius = new_mine.radius # Si es MinaCircular o Movil, lo asignamos
-                            sprite_mina = Item(pixel_x, pixel_y, imagen_escalada, "mina", mina_radius)
-                            
-                            grupo_items.add(sprite_mina)
+                        self.mines.append(new_mine)
+                        grupo_items.add(new_mine)
 
     def posicion_libre(self, x, y):
         """Devuelve True si la celda (x, y) está vacía (None)."""
@@ -278,24 +258,24 @@ class MapManager:
 
 #-----------------------------------------------------------------------------------------
 #DEBUGGING
-import pygame
-from src.classes import load_resource_config
+if __name__ == "__main__": 
+    import pygame
+    from src.classes import load_resource_config
 
-RUTA_CONFIG = "config/default_config.json"
-config = load_resource_config(RUTA_CONFIG)
+    RUTA_CONFIG = "config/default_config.json"
+    config = load_resource_config(RUTA_CONFIG)
 
-mapa = MapManager(50,50,config)
+    mapa = MapManager(50,50,config)
 
-listaRecursos = mapa.get_recursos()
+    listaRecursos = mapa.get_recursos()
 
-print(len(listaRecursos))
-grupo_items_debug = pygame.sprite.Group()
+    print(len(listaRecursos))
+    grupo_items_debug = pygame.sprite.Group()
 
-mapa.colocar_minas(grupo_items_debug)
-mapa._colocar_recursos(grupo_items_debug)
-print(len(listaRecursos))
-recurso = listaRecursos[0]
-print(recurso.type)
-
+    mapa.colocar_minas(grupo_items_debug)
+    mapa._colocar_recursos(grupo_items_debug)
+    print(len(listaRecursos))
+    recurso = listaRecursos[0]
+    print(recurso.type)
 
 
