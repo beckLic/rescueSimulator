@@ -546,5 +546,33 @@ class MinaLineal(Mina):
             #OPERADOR AND PARA RETURNAR TRUE O FALSE
             return x_match and y_in_range
         
-class minas():
-    pass
+class MinaMovil(MinaCircular):
+    """
+    Representa la Mina G1, que es circular pero aparece y desaparece.
+    Hereda de CircularMine para reutilizar la lógica de su área de efecto
+    """
+    #INICIALIZAMOS CON LOS PARAMETROS DE POSICION, RADIO Y TIEMPO DE APARICION
+    def __init__(self, position: tuple, radius: int, cycle_duration: int, imagen: pygame.Surface):
+        # Nota: Pasamos la imagen al padre (MinaCircular)
+        super().__init__(position, radius, imagen)
+        self.cycle_duration = cycle_duration
+        self.is_active = True
+
+    def update(self, grupo_vehiculos, mapa, game_time):
+        """
+        Actualiza el estado de la mina (activa/inactiva) basado en el
+        tiempo de la simulación, como se especifica en el proyecto.
+        """
+        # Cada 'cycle_duration' instancias de tiempo, el estado cambia.
+        if game_time > 0 and game_time % self.cycle_duration == 0:
+            self.is_active = not self.is_active
+            # print(f"Mina móvil en {self.position} ahora está {'activa' if self.is_active else 'inactiva'}")
+        super().update(grupo_vehiculos, mapa, game_time)
+    def is_inside_area(self, point: tuple) -> bool:
+        # La mina solo puede causar daño si su estado es activo.
+        if not self.is_active:
+            return False
+        
+        # Si está activa, utiliza la misma lógica de su clase padre (CircularMine).
+        return super().is_inside_area(point)
+
