@@ -545,6 +545,6 @@ class MinaLineal(Mina):
             y_in_range = (my - half_len) <= py <= (my + half_len) # y la 'y' debe estar dentro del segmento de la línea.
             #OPERADOR AND PARA RETURNAR TRUE O FALSE
             return x_match and y_in_range
-#-------------------------------------------------------------------------------------------------------------
-
-
+        
+class minas():
+    pass
