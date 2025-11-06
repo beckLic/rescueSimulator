@@ -9,14 +9,14 @@ class Vehiculo:
     Contiene todos los atributos y métodos comunes.
     """ 
     #CONSTRUCTOR DE LA CLASE
-    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, posicion_base: tuple):
+    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, pos_base: tuple):
         # --- Atributos de Identificación ---
         self.id = id
         self.jugador_id = jugador_id
         
         # --- Atributos de Posición y Estado ---
         self.posicion = pygame.math.Vector2(pos_inicial)
-        self.posicion_base = posicion_base #posicion de su base para volver
+        self.posicion_base = pos_base #posicion de su base para volver
         self.objetivo_actual = None
         self.camino_actual = []
         self.velocidad = 3 # Píxeles por fotograma
@@ -222,7 +222,7 @@ class Vehiculo:
                 if not self.camino_actual:
                     print(f"{self.id} llegó a la base y entregó la carga.")
                     
-                    # 1. Registrar puntaje (esto se haría en el GameEngine)
+                    # 1. Registrar puntaje
                     # game_engine.registrar_entrega(self.jugador_id, self.carga_actual)
                     
                     # 2. Resetear el vehículo
@@ -240,8 +240,8 @@ class Jeep(Vehiculo):
     - Puede recoger todo tipo de carga.
     - Puede realizar hasta 2 viajes antes de volver a base.
     """
-    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple):
-        super().__init__(id, jugador_id, pos_inicial)
+    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, pos_base: tuple):
+        super().__init__(id, jugador_id, pos_inicial, pos_base)
         self.tipo = "jeep"
         self.max_viajes = 2  # 
         self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]  # 
@@ -253,8 +253,8 @@ class Moto(Vehiculo):
     - Solo puede recoger Personas.
     - Debe volver a la base después de cada viaje.
     """
-    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple):
-        super().__init__(id, jugador_id, pos_inicial)
+    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, pos_base: tuple):
+        super().__init__(id, jugador_id, pos_inicial, pos_base)
         self.tipo = "moto"
         self.max_viajes = 1  # 
         self.tipo_carga_permitida = ["Persona"]  # 
@@ -265,8 +265,8 @@ class Camion(Vehiculo):
     - Puede recoger todo tipo de carga.
     - Puede realizar hasta 3 viajes antes de volver a base.
     """
-    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple):
-        super().__init__(id, jugador_id, pos_inicial)
+    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, pos_base: tuple):
+        super().__init__(id, jugador_id, pos_inicial, pos_base)
         self.tipo = "camion"
         self.max_viajes = 3  # 
         self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"] 
@@ -277,8 +277,8 @@ class Auto(Vehiculo):
     - Puede recoger Personas y cargas.
     - Debe volver a la base después de cada viaje.
     """
-    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple):
-        super().__init__(id, jugador_id, pos_inicial)
+    def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, pos_base: tuple):
+        super().__init__(id, jugador_id, pos_inicial, pos_base)
         self.tipo = "auto"
         self.max_viajes = 1   
         self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]   
