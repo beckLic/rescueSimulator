@@ -116,7 +116,7 @@ def imprimir_mapa_pathfinding(mapa_pf):
         print(" ".join(linea_visual))
     print("---------------------------------------------")
 # --- Ejemplo de Uso ---
-from map_manager import *
+from src.map_manager import *
 if __name__ == '__main__':
     from classes import load_resource_config
 
