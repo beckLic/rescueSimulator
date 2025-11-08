@@ -26,6 +26,9 @@ class MapManager:
         self.grid = [[None for _ in range(width)] for _ in range(height)]
         print(f"Mapa de {width}x{height} creado.")
 
+        #puntajes
+        self.puntaje_j1 = 0
+        self.puntaje_j2 = 0
 
     def get_recursos(self):
         """Devuelve la lista de objetos de recursos."""

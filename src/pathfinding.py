@@ -133,7 +133,7 @@ if __name__ == '__main__':
     recurso = listaRecursos[0]
     #print(recurso.type)
     inicio = (random.randint(0,49),random.randint(0,49))
-    fin = recurso.position
+    fin = (recurso.position[1], recurso.position[0])
     print(mapa)
     mapaBusqueda = mapa.generar_mapa_pathfinding()
     imprimir_mapa_pathfinding(mapaBusqueda)

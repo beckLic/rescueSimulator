@@ -48,6 +48,9 @@ class Vehiculo(pygame.sprite.Sprite):
         # 2. Eliminar el recurso del mapa
         map_manager.eliminar_elemento(recurso.position[0], recurso.position[1])
         recurso.kill()
+        # 3. Eliminar el recurso de la lista de objetivos
+        if recurso in map_manager.resources:
+            map_manager.resources.remove(recurso)
     def __repr__(self):
         """
         Representación en string del objeto para facilitar la depuración.
@@ -185,7 +188,8 @@ class Vehiculo(pygame.sprite.Sprite):
                 print(f"{self.id} decidió ir a por {self.objetivo_actual.type} en {self.objetivo_actual.position}")
                 
                 # Paso 2: Calcular la Ruta hacia el objetivo
-                self.camino_actual = self._calcular_camino(map_manager, self.objetivo_actual.position)
+                pos_objetivo_yx = (self.objetivo_actual.position[1], self.objetivo_actual.position[0])
+                self.camino_actual = self._calcular_camino(map_manager, pos_objetivo_yx)
                 
                 # Paso 3: Transición de Estado
                 if self.camino_actual:
@@ -202,7 +206,14 @@ class Vehiculo(pygame.sprite.Sprite):
         # ESTADO 2: BUSCANDO (Yendo hacia un recurso)
         # =======================================================
         elif self.estado == "buscando":
-            
+            # Comprobar si el objetivo sigue existiendo.
+            # (Puede que otro vehículo lo haya "robado")
+            if self.objetivo_actual not in map_manager.resources:
+                print(f"{self.id} - ¡Objetivo {self.objetivo_actual.type} robado! Buscando uno nuevo.")
+                self.estado = "inactivo"
+                self.camino_actual = None
+                self.objetivo_actual = None
+                return # Salir del update y re-evaluar en el próximo frame
             if not self.camino_actual:
                 # Si el camino desaparece
                 print(f"{self.id} perdió su camino, volviendo a inactivo.")
@@ -245,11 +256,12 @@ class Vehiculo(pygame.sprite.Sprite):
             
             # Paso 1: Calcular el camino a la base (SOLO SI NO LO TIENE)
             if not self.camino_actual:
-                print(f"{self.id} está calculando la ruta de regreso a la base.")
+                print(f"{self.id} NO encuentra camino a la base. Esperando...")
                 
                 # Ojo: A* necesita (y,x) para el destino
                 pos_base_yx = (int(self.posicion_base[1]), int(self.posicion_base[0]))
                 self.camino_actual = self._calcular_camino(map_manager, pos_base_yx)
+                return
             
             
 
@@ -264,11 +276,20 @@ class Vehiculo(pygame.sprite.Sprite):
 
                 # --- LÓGICA DE LLEGADA A LA BASE ---
                 if not self.camino_actual:
-                    print(f"{self.id} llegó a la base y entregó la carga.")
                     
-                    # 1. Registrar puntaje (esto se haría en el GameEngine)
-                    # game_engine.registrar_entrega(self.jugador_id, self.carga_actual)
+                    # 1. Calcular y registrar el puntaje
+                    puntaje_obtenido = 0
+                    for recurso in self.carga_actual:
+                        puntaje_obtenido += recurso.score
                     
+                    if self.jugador_id == 1:
+                        map_manager.puntaje_j1 += puntaje_obtenido
+                    else: # jugador_id == 2
+                        map_manager.puntaje_j2 += puntaje_obtenido
+                    
+                    print(f"{self.id} llegó a la base y entregó {puntaje_obtenido} puntos.")
+                    print(f"== MARCADOR: AZUL ({map_manager.puntaje_j1}) - ROJO ({map_manager.puntaje_j2}) ==")
+
                     # 2. Resetear el vehículo
                     self.carga_actual.clear()
                     self.viajes_realizados = 0
@@ -288,8 +309,12 @@ class Jeep(Vehiculo):
         super().__init__(id, jugador_id, pos_inicial, posicion_base)
         self.tipo = "jeep"
         self.max_viajes = 2  # 
-        self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]  # 
-        self.image_original = pygame.image.load("imagenes\jeep_A.png").convert_alpha()#falta equipo rojo
+        self.tipo_carga_permitida = ["Personas", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]  # 
+        if self.jugador_id == 1:
+            ruta_imagen = "imagenes/jeep_A.png"
+        else: # Asumimos jugador_id == 2
+            ruta_imagen = "imagenes/jeep_R.png"
+        self.image_original = pygame.image.load(ruta_imagen).convert_alpha()
         ancho, alto = self.image_original.get_size()
         factor_x = CONSTANTES.CELDA_ANCHO / ancho
         factor_y = CONSTANTES.CELDA_ALTO / alto
@@ -315,8 +340,12 @@ class Moto(Vehiculo):
         super().__init__(id, jugador_id, pos_inicial, posicion_base) 
         self.tipo = "moto"
         self.max_viajes = 1  # 
-        self.tipo_carga_permitida = ["Persona"]  # 
-        self.image_original = pygame.image.load("imagenes/moto_A.png").convert_alpha()#falta equipo rojo
+        self.tipo_carga_permitida = ["Personas"]  # 
+        if self.jugador_id == 1:
+            ruta_imagen = "imagenes/moto_A.png"
+        else: # Asumimos jugador_id == 2
+            ruta_imagen = "imagenes/moto_R.png"
+        self.image_original = pygame.image.load(ruta_imagen).convert_alpha()
         ancho, alto = self.image_original.get_size()
         factor_x = CONSTANTES.CELDA_ANCHO / ancho
         factor_y = CONSTANTES.CELDA_ALTO / alto
@@ -342,8 +371,12 @@ class Camion(Vehiculo):
         super().__init__(id, jugador_id, pos_inicial, posicion_base) 
         self.tipo = "camion"
         self.max_viajes = 3  # 
-        self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"] 
-        self.image_original = pygame.image.load("imagenes/camionA.png").convert_alpha()#falta equipo rojo
+        self.tipo_carga_permitida = ["Personas", "Alimentos", "Ropa", "Medicamentos", "Armamentos"] 
+        if self.jugador_id == 1:
+            ruta_imagen = "imagenes/camion_A.png"
+        else: # Asumimos jugador_id == 2
+            ruta_imagen = "imagenes/camion_R.png"
+        self.image_original = pygame.image.load(ruta_imagen).convert_alpha()
         ancho, alto = self.image_original.get_size()
         factor_x = CONSTANTES.CELDA_ANCHO / ancho
         factor_y = CONSTANTES.CELDA_ALTO / alto
@@ -369,8 +402,12 @@ class Auto(Vehiculo):
         super().__init__(id, jugador_id, pos_inicial, posicion_base) 
         self.tipo = "auto"
         self.max_viajes = 1   
-        self.tipo_carga_permitida = ["Persona", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]   
-        self.image_original = pygame.image.load("imagenes/Auto_A.png").convert_alpha()#falta equipo rojo
+        self.tipo_carga_permitida = ["Personas", "Alimentos", "Ropa", "Medicamentos", "Armamentos"]   
+        if self.jugador_id == 1:
+            ruta_imagen = "imagenes/Auto_A.png"
+        else: # Asumimos jugador_id == 2
+            ruta_imagen = "imagenes/Auto_R.png"
+        self.image_original = pygame.image.load(ruta_imagen).convert_alpha()
         ancho, alto = self.image_original.get_size()
         factor_x = CONSTANTES.CELDA_ANCHO / ancho
         factor_y = CONSTANTES.CELDA_ALTO / alto
@@ -533,19 +570,50 @@ class MinaLineal(Mina):
     def is_inside_area(self, point: tuple) -> bool:
         px, py = point #coordenadas del vehiculo
         mx, my = self.position #coordenadas del centro de la mina
-        half_len = self.length / 2 #segmento para dividir el radio en dos partes iguales para los costados de la mina
+        offset = (self.length - 1) / 2 #segmento para dividir el radio en dos partes iguales para los costados de la mina
 
         if self.orientation == 'Horizontal':
             y_match = abs(py - my) < 1 # Para una línea horizontal, la coordenada 'y' debe ser la misma,
-            x_in_range = (mx - half_len) <= px <= (mx + half_len) # y la 'x' debe estar dentro del segmento de la línea.
+            x_in_range = (mx - offset) <= px <= (mx + offset) # y la 'x' debe estar dentro del segmento de la línea.
             #OPERADOR AND PARA RETURNAR TRUE O FALSE
             return y_match and x_in_range
         else: # 'vertical'
             x_match = abs(px - mx) < 1 # Para una línea vertical, la coordenada 'x' debe ser la misma,
-            y_in_range = (my - half_len) <= py <= (my + half_len) # y la 'y' debe estar dentro del segmento de la línea.
+            y_in_range = (my - offset) <= py <= (my + offset) # y la 'y' debe estar dentro del segmento de la línea.
             #OPERADOR AND PARA RETURNAR TRUE O FALSE
             return x_match and y_in_range
+    def draw_radius(self, surface):
+        """Dibuja el área de efecto rectangular de la mina lineal."""
         
+        # Color rojo semitransparente (R, G, B, Alpha)
+        color_area = (255, 0, 0, 100) 
+        
+        if self.orientation == 'Horizontal':
+            # Ancho total en píxeles (largo de la mina)
+            width_px = self.length * CONSTANTES.CELDA_ANCHO
+            # Alto total en píxeles (siempre 1 celda)
+            height_px = CONSTANTES.CELDA_ALTO
+            
+        else: # 'Vertical'
+            # Ancho total en píxeles (siempre 1 celda)
+            width_px = CONSTANTES.CELDA_ANCHO
+            # Alto total en píxeles (largo de la mina)
+            height_px = self.length * CONSTANTES.CELDA_ALTO
+        
+        # Creamos una superficie transparente del tamaño del área de efecto
+        s = pygame.Surface((width_px, height_px), pygame.SRCALPHA)
+        
+        # Dibujamos el rectángulo de peligro en esa superficie
+        pygame.draw.rect(s, color_area, (0, 0, width_px, height_px))
+        
+        # Calculamos la esquina superior izquierda para centrar el área
+        # basado en el centro del sprite de la mina
+        top_left_x = self.rect.centerx - (width_px / 2)
+        top_left_y = self.rect.centery - (height_px / 2)
+        
+        # 'Bliteamos' (dibujamos) la superficie de rango sobre la ventana principal
+        surface.blit(s, (top_left_x, top_left_y))
+
 class MinaMovil(MinaCircular):
     """
     Representa la Mina G1, que es circular pero aparece y desaparece.

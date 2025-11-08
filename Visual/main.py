@@ -5,7 +5,7 @@ from src.classes import load_resource_config, Jeep, Moto, Camion, Auto
 
 
 pygame.init()
-
+fuente_hud = pygame.font.SysFont("Arial", 30)
 ventana = pygame.display.set_mode((CONSTANTES.ANCHO_VENTANA, CONSTANTES.ALTO_VENTANA))
 
 
@@ -51,34 +51,45 @@ def inicializar_simulacion():
     global game_time
     game_time = 0
     print("Iniciando simulación...")
-    
+    mapa.puntaje_j1 = 0
+    mapa.puntaje_j2 = 0
     # 1. Limpiar grupos
     grupo_items.empty()
     grupo_vehiculos.empty()
     
-    # 2. Generar mapa lógico Y sprites de items/minas
-    #    (Tu generar_mapa_aleatorio ya hace esto)
+    
     mapa.generar_mapa_aleatorio(grupo_items)
     
-    # 3. ¡Crear los vehículos de IA!
-    # (Define sus posiciones iniciales y bases en la GRILLA)
-    base_jugador_1 = (5, 5) # (x, y) en grilla
+    
+    # --- Equipo 1 (Azul) ---
+    base_jugador_1 = (5, 5) # (x, y) en grilla (esquina superior izquierda)
     
     jeep_ia_1 = Jeep(id="J-IA-1", jugador_id=1, pos_inicial=(5, 5), posicion_base=base_jugador_1)
-    
-    # (Puedes añadir más vehículos)
-    # moto_ia_1 = Moto(id="M-IA-1", jugador_id=1, pos_inicial=(6, 6), posicion_base=base_jugador_1)
-    
-    # 4. Añadirlos al grupo de vehículos
-    grupo_vehiculos.add(jeep_ia_1)
-    # grupo_vehiculos.add(moto_ia_1)
-    
+    moto_ia_1 = Moto(id="M-IA-1", jugador_id=1, pos_inicial=(6, 6), posicion_base=base_jugador_1)
+    camion_ia_1 = Camion(id="C-IA-1", jugador_id=1, pos_inicial=(7, 7), posicion_base=base_jugador_1)
+    auto_ia_1 = Auto(id="A-IA-1", jugador_id=1, pos_inicial=(8, 8), posicion_base=base_jugador_1)
+
+    # --- Equipo 2 (Rojo) ---
+    # (El mapa es 50x50, así que usamos coordenadas opuestas)
+    base_jugador_2 = (44, 44) # (x, y) en grilla (esquina inferior derecha)
+
+    jeep_ia_2 = Jeep(id="J-IA-2", jugador_id=2, pos_inicial=(44, 44), posicion_base=base_jugador_2)
+    moto_ia_2 = Moto(id="M-IA-2", jugador_id=2, pos_inicial=(43, 43), posicion_base=base_jugador_2)
+    camion_ia_2 = Camion(id="C-IA-2", jugador_id=2, pos_inicial=(42, 42), posicion_base=base_jugador_2)
+    auto_ia_2 = Auto(id="A-IA-2", jugador_id=2, pos_inicial=(41, 41), posicion_base=base_jugador_2)
+
+    # 4. Añadirlos TODOS al grupo de vehículos
+    grupo_vehiculos.add(
+        jeep_ia_1, moto_ia_1, camion_ia_1, auto_ia_1,
+        jeep_ia_2, moto_ia_2, camion_ia_2, auto_ia_2
+    )
+
     print(f"Simulación inicializada con {len(grupo_vehiculos)} vehículos.")
 run = True
 simulacion_iniciada = False
 inicializar_simulacion()
 while run:
-    reloj.tick(20)
+    reloj.tick(20)#FPS
     game_time += 1
     ventana.fill(CONSTANTES.COLOR_NEGRO)
     dibujar_grid()
@@ -102,23 +113,30 @@ while run:
                     # Cuando se hace clic en Init
                     grupo_items.empty()
                     mapa.generar_mapa_aleatorio(grupo_items)  # distribuye minas y recursos
-                    mapa.colocar_minas(grupo_items)
+                    
                 elif boton_play.collidepoint(event.pos):
                     simulacion_iniciada = True
                     print("Simulación iniciada")
     
     if simulacion_iniciada:
             
-            # 1. ¡Actualiza la IA de los vehículos!
-            # (Esto corre la máquina de estados, A*, y mueve los sprites)
+            # Actualiza la IA de los vehículos
+            
             grupo_vehiculos.update(mapa, game_time)
             
             # 2. Actualiza los items (para colisiones)
             # (Les pasamos el grupo de vehículos para que revisen colisiones)
             # (Necesitas arreglar el update de Recurso y Mina, mira abajo)
             grupo_items.update(grupo_vehiculos, mapa, game_time)
-
-
+    # Dibujar HUD de Puntajes
+    texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255)) # Azul
+    texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100)) # Rojo
+    
+    # Dibujamos un fondo oscuro para el HUD
+    pygame.draw.rect(ventana, (0,0,0), (345, 20, 250, 65))
+    
+    ventana.blit(texto_j1, (350, 25))
+    ventana.blit(texto_j2, (350, 55))
     dibujar_botones()
     pygame.display.update()
 
