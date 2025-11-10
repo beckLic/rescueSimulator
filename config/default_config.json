@@ -25,12 +25,12 @@
     "Mina_01": {
       "class": "MinaCircular",
       "count": 1,
-      "radius": 10
+      "radius": 6
     },
     "Mina_02": {
       "class": "MinaCircular",
       "count": 1,
-      "radius": 5
+      "radius": 3
     },
     "Mina_T1": {
       "class": "MinaLineal",
