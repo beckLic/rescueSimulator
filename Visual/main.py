@@ -1,3 +1,5 @@
+# Archivo: Visual/main.py
+
 import pygame
 from Visual import CONSTANTES
 from src.map_manager import MapManager
@@ -16,8 +18,8 @@ pygame.display.set_caption("Rescue Simulator")
 
 
 
-minaLineal=pygame.image.load("imagenes\minaLineal.png")
-minaMovil=pygame.image.load("imagenes\minaMovil.png")
+minaLineal=pygame.image.load("imagenes/minaLineal.png") # Corregí la barra \
+minaMovil=pygame.image.load("imagenes/minaMovil.png")
 
 game_time = 0 #tiempo del algoritmo
 def dibujar_grid():
@@ -85,6 +87,39 @@ def inicializar_simulacion():
     )
 
     print(f"Simulación inicializada con {len(grupo_vehiculos)} vehículos.")
+
+# --- NUEVA FUNCIÓN DE COLISIÓN ---
+def chequear_colisiones_vehiculos(grupo_vehiculos):
+    """
+    Revisa si dos vehículos ocupan la misma celda de la grilla y 
+    los elimina si eso ocurre.
+    """
+    posiciones_ocupadas = {} # Almacena { (x,y) : vehiculo }
+    vehiculos_a_eliminar = set() # Usamos un set para evitar duplicados
+
+    # Iteramos sobre una copia .sprites() para poder modificar el grupo
+    for vehiculo in grupo_vehiculos.sprites():
+        # La posición es un Vector2, la convertimos en tupla para usarla como clave
+        pos_tuple = (int(vehiculo.posicion.x), int(vehiculo.posicion.y))
+
+        if pos_tuple in posiciones_ocupadas:
+            # ¡Colisión detectada!
+            otro_vehiculo = posiciones_ocupadas[pos_tuple]
+            print(f"¡COLISIÓN en {pos_tuple} entre {vehiculo.id} y {otro_vehiculo.id}!")
+            
+            # Añadir ambos vehículos al set de eliminación
+            vehiculos_a_eliminar.add(vehiculo)
+            vehiculos_a_eliminar.add(otro_vehiculo)
+        else:
+            # Esta celda ahora está ocupada por este vehículo
+            posiciones_ocupadas[pos_tuple] = vehiculo
+    
+    # Eliminar todos los vehículos que colisionaron
+    for vehiculo in vehiculos_a_eliminar:
+        vehiculo.kill() # .kill() los elimina de CUALQUIER grupo al que pertenezcan
+
+
+# --- INICIO DEL BUCLE PRINCIPAL ---
 run = True
 simulacion_iniciada = False
 inicializar_simulacion()
@@ -111,8 +146,7 @@ while run:
             if not simulacion_iniciada:
                 if boton_init.collidepoint(event.pos):
                     # Cuando se hace clic en Init
-                    grupo_items.empty()
-                    mapa.generar_mapa_aleatorio(grupo_items)  # distribuye minas y recursos
+                    inicializar_simulacion() # Usamos la función para reiniciar todo
                     
                 elif boton_play.collidepoint(event.pos):
                     simulacion_iniciada = True
@@ -120,14 +154,18 @@ while run:
     
     if simulacion_iniciada:
             
-            # Actualiza la IA de los vehículos
-            
+            # 1. Actualiza la IA de los vehículos (aquí cambian su self.posicion)
             grupo_vehiculos.update(mapa, game_time)
             
-            # 2. Actualiza los items (para colisiones)
-            # (Les pasamos el grupo de vehículos para que revisen colisiones)
-            # (Necesitas arreglar el update de Recurso y Mina, mira abajo)
+            # --- CÓDIGO AÑADIDO ---
+            # 2. Chequear colisiones entre vehículos DESPUÉS de que se movieron
+            chequear_colisiones_vehiculos(grupo_vehiculos)
+            
+            # 3. Actualiza los items (para colisiones con minas/recursos)
+            #    Los vehículos destruidos en el paso 2 ya no existen en
+            #    grupo_vehiculos, así que no chocarán con minas.
             grupo_items.update(grupo_vehiculos, mapa, game_time)
+            
     # Dibujar HUD de Puntajes
     texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255)) # Azul
     texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100)) # Rojo
