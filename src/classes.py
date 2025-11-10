@@ -90,7 +90,9 @@ class Vehiculo(pygame.sprite.Sprite):
         Retorna el camino encontrado o None.
         """
         try:
+            # REVERTIDA: Llama al 'generar_mapa_pathfinding' simple (estático)
             mapa_pf = map_manager.generar_mapa_pathfinding()
+            
             pos_inicio_yx = (int(self.posicion.y), int(self.posicion.x))
             
             camino_encontrado = a_star(mapa_pf, pos_inicio_yx, destino_yx)
@@ -104,28 +106,42 @@ class Vehiculo(pygame.sprite.Sprite):
             print(f"Error calculando A* para {self.id}: {e}")
             return None
 
-    def _evaluar_siguiente_paso(self, map_manager):
+    def _evaluar_siguiente_paso(self, map_manager, grupo_vehiculos):
         """
         Revisa si el siguiente paso en el camino es peligroso (minas G1, vehículos).
-        Retorna: (siguiente_pos_yx, peligro_detectado)
+        Retorna: (siguiente_pos_yx, peligro_detectado (bool))
         """
         if not self.camino_actual:
-            return None, True # No hay camino, se considera "peligro" para no moverse
+            return None, True # No hay camino, se considera "peligro"
 
         siguiente_pos_yx = self.camino_actual[0]
-        siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
+        siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0]) # (x, y)
 
         peligro_detectado = False
         
-        # Revisar contra minas móviles
+        # 1. Revisar contra minas móviles
         for mina in map_manager.mines:
             if isinstance(mina, MinaMovil):
                 if mina.is_active and mina.is_inside_area(siguiente_pos_xy):
                     peligro_detectado = True
-                    print(f"{self.id} FRENANDO: ¡Mina G1 activa en {siguiente_pos_xy}!")
+                    print(f"{self.id} FRENANDO (MINA): ¡Mina G1 activa en {siguiente_pos_xy}!")
                     break 
 
-        # implementar colision con vehiculos acá
+        if peligro_detectado:
+            return siguiente_pos_yx, True # Salir temprano si ya detectamos una mina
+
+        # 2. Revisar contra otros vehículos
+        if grupo_vehiculos: 
+            for vehiculo in grupo_vehiculos.sprites():
+                if vehiculo == self:
+                    continue
+                
+                vehiculo_pos_xy = (int(vehiculo.posicion.x), int(vehiculo.posicion.y))
+                
+                if vehiculo_pos_xy == siguiente_pos_xy:
+                    peligro_detectado = True
+                    print(f"{self.id} FRENANDO (VEHICULO): ¡{vehiculo.id} está bloqueando {siguiente_pos_xy}!")
+                    break 
             
         return siguiente_pos_yx, peligro_detectado
 
@@ -172,7 +188,7 @@ class Vehiculo(pygame.sprite.Sprite):
         # Actualizar el rectángulo para mantener el centro
         centro = self.rect.center
         self.rect = self.image.get_rect(center=centro)
-    def update(self, map_manager, game_time):
+    def update(self, map_manager, game_time, grupo_vehiculos=None):
         """
         La lógica principal del vehículo en cada frame, organizada como una Máquina de Estados.
         """
@@ -189,66 +205,57 @@ class Vehiculo(pygame.sprite.Sprite):
                 
                 # Paso 2: Calcular la Ruta hacia el objetivo
                 pos_objetivo_yx = (self.objetivo_actual.position[1], self.objetivo_actual.position[0])
+                
+                # REVERTIDO: Llama al _calcular_camino simple
                 self.camino_actual = self._calcular_camino(map_manager, pos_objetivo_yx)
                 
                 # Paso 3: Transición de Estado
                 if self.camino_actual:
-                    self.estado = "buscando" # transicion de estado
+                    self.estado = "buscando" 
                 else:
-                    # El objetivo es inaccesible, lo olvidamos
                     print(f"{self.id} no encontró camino a {self.objetivo_actual.position}")
                     self.objetivo_actual = None
-                    #Se queda 'inactivo' para intentarlo de nuevo en el próximo frame
             
-            # else: No hay objetivos en el mapa. El vehículo se queda 'inactivo'.
-
         # =======================================================
         # ESTADO 2: BUSCANDO (Yendo hacia un recurso)
         # =======================================================
         elif self.estado == "buscando":
-            # Comprobar si el objetivo sigue existiendo.
-            # (Puede que otro vehículo lo haya "robado")
             if self.objetivo_actual not in map_manager.resources:
-                print(f"{self.id} - ¡Objetivo {self.objetivo_actual.type} robado! Buscando uno nuevo.")
                 self.estado = "inactivo"
                 self.camino_actual = None
                 self.objetivo_actual = None
-                return # Salir del update y re-evaluar en el próximo frame
+                return 
             if not self.camino_actual:
-                # Si el camino desaparece
-                print(f"{self.id} perdió su camino, volviendo a inactivo.")
                 self.estado = "inactivo"
                 return
 
             # Revisar peligros en el siguiente paso
-            siguiente_pos_yx, peligro_detectado = self._evaluar_siguiente_paso(map_manager)
+            # REVERTIDO: 'tipo_peligro' ahora es 'peligro_detectado' (bool)
+            siguiente_pos_yx, peligro_detectado = self._evaluar_siguiente_paso(map_manager, grupo_vehiculos)
             
+            # --- LÓGICA DE DECISIÓN SIMPLIFICADA ---
             if not peligro_detectado:
                 # Es seguro moverse
                 siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
                 pos_anterior = self.posicion.copy()
                 self._actualizar_posicion_pixel(siguiente_pos_xy, pos_anterior)
-                self.camino_actual.pop(0) # Del vehiculo avanza un paso en su camino
+                self.camino_actual.pop(0) 
                 
                 # --- LÓGICA DE LLEGADA Y RECOLECCIÓN ---
                 if not self.camino_actual:
-                    print(f"{self.id} llegó al recurso {self.objetivo_actual.type}.")
-                    
-                    # 1. Recolectar
-                    self.recolectar(self.objetivo_actual,map_manager)
+                    self.recolectar(self.objetivo_actual, map_manager)
                     self.objetivo_actual = None
-                    
-                    # 3. DECIDIR QUÉ HACER AHORA
                     if self.viajes_realizados >= self.max_viajes:
-                        print(f"{self.id} alcanzó su max_viajes. Volviendo a base.")
-                        self.estado = "volviendo" # transicion de estado
+                        self.estado = "volviendo"
                     else:
-                        print(f"{self.id} puede seguir recolectando. Buscando nuevo objetivo.")
-                        self.estado = "inactivo" # transicion de estado
+                        self.estado = "inactivo"
             
-            # else: Peligro detectado. El vehículo no se mueve (no hace pop)
-            # y lo re-evaluará en el próximo frame.
-
+            else:
+                # ¡Peligro! (Mina G1 O Vehículo).
+                # La acción es ESPERAR. No hacemos nada (no .pop()).
+                # Lo re-evaluará en el próximo frame.
+                pass 
+            
         # =======================================================
         # ESTADO 3: VOLVIENDO (Yendo hacia la base)
         # =======================================================
@@ -256,17 +263,16 @@ class Vehiculo(pygame.sprite.Sprite):
             
             # Paso 1: Calcular el camino a la base (SOLO SI NO LO TIENE)
             if not self.camino_actual:
-                print(f"{self.id} NO encuentra camino a la base. Esperando...")
-                
-                # Ojo: A* necesita (y,x) para el destino
                 pos_base_yx = (int(self.posicion_base[1]), int(self.posicion_base[0]))
+                
+                # REVERTIDO: Llama al _calcular_camino simple
                 self.camino_actual = self._calcular_camino(map_manager, pos_base_yx)
-                return
+                if not self.camino_actual:
+                    print(f"{self.id} NO encuentra camino a la base. Esperando...")
+                    return
             
-            
-
             # Paso 2: Moverse (con la misma lógica de evasión)
-            siguiente_pos_yx, peligro_detectado = self._evaluar_siguiente_paso(map_manager)
+            siguiente_pos_yx, peligro_detectado = self._evaluar_siguiente_paso(map_manager, grupo_vehiculos)
             
             if not peligro_detectado:
                 siguiente_pos_xy = (siguiente_pos_yx[1], siguiente_pos_yx[0])
@@ -276,28 +282,27 @@ class Vehiculo(pygame.sprite.Sprite):
 
                 # --- LÓGICA DE LLEGADA A LA BASE ---
                 if not self.camino_actual:
-                    
-                    # 1. Calcular y registrar el puntaje
+                    # ... (cálculo de puntaje) ...
                     puntaje_obtenido = 0
                     for recurso in self.carga_actual:
                         puntaje_obtenido += recurso.score
                     
                     if self.jugador_id == 1:
                         map_manager.puntaje_j1 += puntaje_obtenido
-                    else: # jugador_id == 2
+                    else: 
                         map_manager.puntaje_j2 += puntaje_obtenido
                     
                     print(f"{self.id} llegó a la base y entregó {puntaje_obtenido} puntos.")
                     print(f"== MARCADOR: AZUL ({map_manager.puntaje_j1}) - ROJO ({map_manager.puntaje_j2}) ==")
 
-                    # 2. Resetear el vehículo
                     self.carga_actual.clear()
                     self.viajes_realizados = 0
-                    
-                    # 3. Transición de estado
-                    self.estado = "inactivo" # transicion de estado
+                    self.estado = "inactivo"
             
-            # else: Peligro detectado, espera.
+            else:
+                # ¡Peligro! (Mina G1 O Vehículo).
+                # La acción es ESPERAR. No hacemos nada.
+                pass
 #-----------------------------------------------------------------------------------------------------------   
 class Jeep(Vehiculo):
     """

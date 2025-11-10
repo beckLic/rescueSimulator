@@ -206,11 +206,8 @@ class MapManager:
         Las minas móviles se ignoran a propósito,
         ya que A* es un algoritmo estático y la evasión de minas
         móviles debe ser manejada por la IA del vehículo en tiempo real.
-
-        Devuelve:
-            list[list[int]]: Una grilla donde:
-                - 0: La celda es segura (caminable).
-                - 1: La celda está dentro del radio de una mina ESTÁTICA (O1, O2, T1, T2).
+        
+        (VERSIÓN REVERTIDA: Ya no acepta 'grupo_vehiculos')
         """
         
         # 1. Creamos un mapa nuevo, asumiendo que todo es caminable (0)

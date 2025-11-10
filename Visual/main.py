@@ -66,19 +66,19 @@ def inicializar_simulacion():
     # --- Equipo 1 (Azul) ---
     base_jugador_1 = (5, 5) # (x, y) en grilla (esquina superior izquierda)
     
-    jeep_ia_1 = Jeep(id="J-IA-1", jugador_id=1, pos_inicial=(5, 5), posicion_base=base_jugador_1)
-    moto_ia_1 = Moto(id="M-IA-1", jugador_id=1, pos_inicial=(6, 6), posicion_base=base_jugador_1)
-    camion_ia_1 = Camion(id="C-IA-1", jugador_id=1, pos_inicial=(7, 7), posicion_base=base_jugador_1)
-    auto_ia_1 = Auto(id="A-IA-1", jugador_id=1, pos_inicial=(8, 8), posicion_base=base_jugador_1)
+    jeep_ia_1 = Jeep(id="J-IA-1", jugador_id=1, pos_inicial=(0, 0), posicion_base=(0,0))
+    moto_ia_1 = Moto(id="M-IA-1", jugador_id=1, pos_inicial=(0, 5), posicion_base=(0,5))
+    camion_ia_1 = Camion(id="C-IA-1", jugador_id=1, pos_inicial=(0, 10), posicion_base=(0,10))
+    auto_ia_1 = Auto(id="A-IA-1", jugador_id=1, pos_inicial=(0, 15), posicion_base=(0,15))
 
     # --- Equipo 2 (Rojo) ---
     # (El mapa es 50x50, así que usamos coordenadas opuestas)
     base_jugador_2 = (44, 44) # (x, y) en grilla (esquina inferior derecha)
 
-    jeep_ia_2 = Jeep(id="J-IA-2", jugador_id=2, pos_inicial=(44, 44), posicion_base=base_jugador_2)
-    moto_ia_2 = Moto(id="M-IA-2", jugador_id=2, pos_inicial=(43, 43), posicion_base=base_jugador_2)
-    camion_ia_2 = Camion(id="C-IA-2", jugador_id=2, pos_inicial=(42, 42), posicion_base=base_jugador_2)
-    auto_ia_2 = Auto(id="A-IA-2", jugador_id=2, pos_inicial=(41, 41), posicion_base=base_jugador_2)
+    jeep_ia_2 = Jeep(id="J-IA-2", jugador_id=2, pos_inicial=(49, 0), posicion_base=base_jugador_2)
+    moto_ia_2 = Moto(id="M-IA-2", jugador_id=2, pos_inicial=(49, 5), posicion_base=base_jugador_2)
+    camion_ia_2 = Camion(id="C-IA-2", jugador_id=2, pos_inicial=(49, 10), posicion_base=base_jugador_2)
+    auto_ia_2 = Auto(id="A-IA-2", jugador_id=2, pos_inicial=(49, 15), posicion_base=base_jugador_2)
 
     # 4. Añadirlos TODOS al grupo de vehículos
     grupo_vehiculos.add(
@@ -88,7 +88,6 @@ def inicializar_simulacion():
 
     print(f"Simulación inicializada con {len(grupo_vehiculos)} vehículos.")
 
-# --- NUEVA FUNCIÓN DE COLISIÓN ---
 def chequear_colisiones_vehiculos(grupo_vehiculos):
     """
     Revisa si dos vehículos ocupan la misma celda de la grilla y 
@@ -155,9 +154,8 @@ while run:
     if simulacion_iniciada:
             
             # 1. Actualiza la IA de los vehículos (aquí cambian su self.posicion)
-            grupo_vehiculos.update(mapa, game_time)
+            grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
             
-            # --- CÓDIGO AÑADIDO ---
             # 2. Chequear colisiones entre vehículos DESPUÉS de que se movieron
             chequear_colisiones_vehiculos(grupo_vehiculos)
             
