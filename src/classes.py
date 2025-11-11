@@ -140,10 +140,8 @@ class Vehiculo(pygame.sprite.Sprite):
                 # Posición actual (x,y) del otro vehículo
                 vehiculo_pos_xy = (int(vehiculo_bloqueador.posicion.x), int(vehiculo_bloqueador.posicion.y))
                 
-                # Si el otro vehículo está en nuestro siguiente paso...
+                # Si el otro vehículo está en nuestro siguiente paso
                 if vehiculo_pos_xy == siguiente_pos_xy:
-                    
-                    # --- ¡AQUÍ ESTÁ LA LÓGICA DE ATAQUE! ---
                     
                     # Primero, revisamos si es un compañero
                     if vehiculo_bloqueador.jugador_id == self.jugador_id:

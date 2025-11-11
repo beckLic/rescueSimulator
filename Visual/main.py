@@ -8,8 +8,7 @@ from src.classes import load_resource_config, Jeep, Moto, Camion, Auto
 
 pygame.init()
 fuente_hud = pygame.font.SysFont("Arial", 30)
-ventana = pygame.display.set_mode((CONSTANTES.ANCHO_VENTANA, CONSTANTES.ALTO_VENTANA))
-
+ventana = pygame.display.set_mode((CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.VENTANA_ALTO_TOTAL))
 
 RUTA_CONFIG = "config/default_config.json"
 config = load_resource_config(RUTA_CONFIG)
@@ -23,11 +22,11 @@ minaMovil=pygame.image.load("imagenes/minaMovil.png")
 
 game_time = 0 #tiempo del algoritmo
 def dibujar_grid():
+    # El grid solo se dibuja hasta el alto del MAPA
     for x in range(51):
-        pygame.draw.line(ventana,CONSTANTES.COLOR_ROJO, (x*CONSTANTES.CELDA_ANCHO, 0), (x*CONSTANTES.CELDA_ANCHO, CONSTANTES.ALTO_VENTANA))
+        pygame.draw.line(ventana,CONSTANTES.COLOR_ROJO, (x*CONSTANTES.CELDA_ANCHO, 0), (x*CONSTANTES.CELDA_ANCHO, CONSTANTES.MAPA_ALTO))
     for y in range(51):
-        pygame.draw.line(ventana, CONSTANTES.COLOR_ROJO, (0, y*CONSTANTES.CELDA_ALTO), (CONSTANTES.ANCHO_VENTANA, y*CONSTANTES.CELDA_ALTO))
-
+        pygame.draw.line(ventana, CONSTANTES.COLOR_ROJO, (0, y*CONSTANTES.CELDA_ALTO), (CONSTANTES.MAPA_ANCHO, y*CONSTANTES.CELDA_ALTO))
 
 
 reloj = pygame.time.Clock()
@@ -38,16 +37,17 @@ grupo_vehiculos = pygame.sprite.Group()
 # Cargar minas en el mapa y en el grupo
 mapa.colocar_minas(grupo_items)
 mapa._colocar_recursos(grupo_items)
-#Botones
-boton_init = pygame.Rect(50, 30, 120, 40)
-boton_play = pygame.Rect(200, 30, 120, 40)
+# Botones: Movemos la coordenada Y al panel de UI (MAPA_ALTO + offset)
+boton_init = pygame.Rect(50, CONSTANTES.MAPA_ALTO + 30, 120, 40)
+boton_play = pygame.Rect(200, CONSTANTES.MAPA_ALTO + 30, 120, 40)
 simulacion_iniciada = False
 def dibujar_botones():
     pygame.draw.rect(ventana, (0, 200, 0), boton_init)
     pygame.draw.rect(ventana, (0, 0, 200), boton_play)
     fuente = pygame.font.SysFont(None, 24)
-    ventana.blit(fuente.render("Init", True, (255,255,255)), (85, 40))
-    ventana.blit(fuente.render("Play", True, (255,255,255)), (235, 40))
+    # Movemos el texto de los botones al panel de UI
+    ventana.blit(fuente.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
+    ventana.blit(fuente.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
 # --- Función para (re)iniciar la simulación ---
 def inicializar_simulacion():
     global game_time
@@ -126,6 +126,10 @@ while run:
     reloj.tick(20)#FPS
     game_time += 1
     ventana.fill(CONSTANTES.COLOR_NEGRO)
+    # Dibujamos el fondo del panel de UI
+    # (Un gris oscuro, por ejemplo)
+    color_panel_ui = (30, 30, 30)
+    pygame.draw.rect(ventana, color_panel_ui, (0, CONSTANTES.MAPA_ALTO, CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.UI_ALTO))
     dibujar_grid()
 
     
@@ -169,10 +173,11 @@ while run:
     texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100)) # Rojo
     
     # Dibujamos un fondo oscuro para el HUD
-    pygame.draw.rect(ventana, (0,0,0), (345, 20, 250, 65))
+    # Movemos el fondo del HUD y el texto al panel de UI
+    pygame.draw.rect(ventana, (0,0,0), (345, CONSTANTES.MAPA_ALTO + 20, 250, 65))
     
-    ventana.blit(texto_j1, (350, 25))
-    ventana.blit(texto_j2, (350, 55))
+    ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
+    ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
     dibujar_botones()
     pygame.display.update()
 
