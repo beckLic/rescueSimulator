@@ -15,7 +15,7 @@ config = load_resource_config(RUTA_CONFIG)
 mapa = MapManager(CONSTANTES.CANTIDAD_I, CONSTANTES.CANTIDAD_J, config)
 pygame.display.set_caption("Rescue Simulator")
 
-
+simulacion_finalizada = False
 
 minaLineal=pygame.image.load("imagenes/minaLineal.png") # Corregí la barra \
 minaMovil=pygame.image.load("imagenes/minaMovil.png")
@@ -41,17 +41,27 @@ mapa._colocar_recursos(grupo_items)
 boton_init = pygame.Rect(50, CONSTANTES.MAPA_ALTO + 30, 120, 40)
 boton_play = pygame.Rect(200, CONSTANTES.MAPA_ALTO + 30, 120, 40)
 simulacion_iniciada = False
-def dibujar_botones():
+def dibujar_controles(finalizada):
+    """
+    Dibuja los controles de la UI (botones izquierdos).
+    Muestra "Init" siempre.
+    Muestra "Play" solo si el juego NO ha terminado.
+    """
+    fuente_botones = pygame.font.SysFont(None, 24)
+    
+    # Botón Init (siempre se dibuja)
     pygame.draw.rect(ventana, (0, 200, 0), boton_init)
-    pygame.draw.rect(ventana, (0, 0, 200), boton_play)
-    fuente = pygame.font.SysFont(None, 24)
-    # Movemos el texto de los botones al panel de UI
-    ventana.blit(fuente.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
-    ventana.blit(fuente.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
+    ventana.blit(fuente_botones.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
+
+    # Botón Play (solo si el juego no ha terminado)
+    if not finalizada:
+        pygame.draw.rect(ventana, (0, 0, 200), boton_play)
+        ventana.blit(fuente_botones.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
 # --- Función para (re)iniciar la simulación ---
 def inicializar_simulacion():
-    global game_time
+    global game_time, simulacion_finalizada
     game_time = 0
+    simulacion_finalizada = False
     print("Iniciando simulación...")
     mapa.puntaje_j1 = 0
     mapa.puntaje_j2 = 0
@@ -146,41 +156,88 @@ while run:
         if event.type == pygame.QUIT:
             run = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if not simulacion_iniciada:
-                if boton_init.collidepoint(event.pos):
-                    # Cuando se hace clic en Init
-                    inicializar_simulacion() # Usamos la función para reiniciar todo
+            # El botón 'Init' funciona siempre y resetea el juego
+            if boton_init.collidepoint(event.pos):
+                inicializar_simulacion() # Resetea todo, incl. simulacion_finalizada
                     
-                elif boton_play.collidepoint(event.pos):
-                    simulacion_iniciada = True
-                    print("Simulación iniciada")
+            # El botón 'Play' solo funciona si el juego NO ha iniciado Y NO ha finalizado
+            elif boton_play.collidepoint(event.pos) and not simulacion_iniciada and not simulacion_finalizada:
+                simulacion_iniciada = True
+                print("Simulación iniciada")
     
+    # --- Lógica de Simulación ---
     if simulacion_iniciada:
             
-            # 1. Actualiza la IA de los vehículos (aquí cambian su self.posicion)
+            # 1. Actualiza la IA de los vehículos
             grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
             
-            # 2. Chequear colisiones entre vehículos DESPUÉS de que se movieron
+            # 2. Chequear colisiones entre vehículos
             chequear_colisiones_vehiculos(grupo_vehiculos)
             
             # 3. Actualiza los items (para colisiones con minas/recursos)
-            #    Los vehículos destruidos en el paso 2 ya no existen en
-            #    grupo_vehiculos, así que no chocarán con minas.
             grupo_items.update(grupo_vehiculos, mapa, game_time)
             
-    # Dibujar HUD de Puntajes
-    texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255)) # Azul
-    texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100)) # Rojo
+            # 4.Chequear condiciones de fin de juego
+            # Un grupo de sprites vacío evalúa como False
+            if not mapa.resources or not grupo_vehiculos:
+                simulacion_iniciada = False
+                simulacion_finalizada = True
+                print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
+
+            
+    # Archivo: Visual/main.py
+
+# (Busca y REEMPLAZA la última sección del bucle 'while run:')
+
+    # --- Dibujar HUD (MODIFICADO) ---
     
-    # Dibujamos un fondo oscuro para el HUD
-    # Movemos el fondo del HUD y el texto al panel de UI
+    # Puntajes (lado izquierdo/centro)
+    texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255))
+    texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100))
+    
     pygame.draw.rect(ventana, (0,0,0), (345, CONSTANTES.MAPA_ALTO + 20, 250, 65))
     
     ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
     ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
-    dibujar_botones()
+    
+    # Controles (botones en el lado izquierdo)
+    dibujar_controles(simulacion_finalizada)
+
+    # --- (NUEVO) Dibujar Ganador (lado derecho) ---
+    if simulacion_finalizada:
+        texto_str = ""
+        color_texto = (255, 255, 255) # Blanco por defecto
+        
+        if mapa.puntaje_j1 > mapa.puntaje_j2:
+            texto_str = "¡Gana Equipo Azul!"
+            color_texto = (100, 150, 255) # Azul
+        elif mapa.puntaje_j2 > mapa.puntaje_j1:
+            texto_str = "¡Gana Equipo Rojo!"
+            color_texto = (255, 100, 100) # Rojo
+        else:
+            texto_str = "¡Empate!"
+            color_texto = (255, 255, 255) # Blanco
+
+        # Renderizar texto del ganador
+        texto_ganador = fuente_hud.render(texto_str, True, color_texto)
+        
+        # Calcular posición en la DERECHA del HUD
+        # Usamos .get_rect() para alinear el texto a la derecha
+        
+        # Posición X: El ancho total de la ventana menos un margen de 50px
+        pos_x_derecha = CONSTANTES.VENTANA_ANCHO_TOTAL - 50 
+        
+        # Posición Y: Centrado verticalmente en el panel del HUD
+        pos_y_centro_hud = CONSTANTES.MAPA_ALTO + (CONSTANTES.UI_ALTO / 2)
+        
+        # Crear el rectángulo del texto y posicionarlo
+        rect_ganador = texto_ganador.get_rect(centery=pos_y_centro_hud, right=pos_x_derecha)
+        
+        # Dibujar el texto en la ventana
+        ventana.blit(texto_ganador, rect_ganador)
+
+    
     pygame.display.update()
 
 pygame.quit()
-
     #Debuggin
