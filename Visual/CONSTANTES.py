@@ -2,9 +2,9 @@
 ANCHO_VENTANA=1500
 ALTO_VENTANA=800
 
-MAPA_ANCHO = 1500  # Renombrado (antes ANCHO_VENTANA)
-MAPA_ALTO = 800   # Renombrado (antes ALTO_VENTANA)
-UI_ALTO = 100     # Nuevo: Altura para el panel de botones/HUD
+MAPA_ANCHO = 1500  
+MAPA_ALTO = 800   
+UI_ALTO = 100     # Altura para el panel de botones/HUD
 
 VENTANA_ANCHO_TOTAL = MAPA_ANCHO
 VENTANA_ALTO_TOTAL = MAPA_ALTO + UI_ALTO

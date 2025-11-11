@@ -129,6 +129,17 @@ class MapManager:
         la posición de su centro esté libre antes de crearla.
         """
         minas_config = self.mine_config.items()
+
+        MARGEN_LATERAL_BASES = 10 
+        MARGEN_SUPERIOR_INFERIOR = 5
+        
+        # Calcula la zona segura para generar minas
+        x_min_seguro = MARGEN_LATERAL_BASES
+        x_max_seguro = self.width - 1 - MARGEN_LATERAL_BASES
+        
+        y_min_seguro = MARGEN_SUPERIOR_INFERIOR
+        y_max_seguro = self.height - 1 - MARGEN_SUPERIOR_INFERIOR
+
         imagen = None
         for mina_nombre, valores in minas_config:
             class_name = valores.get("class")
@@ -137,8 +148,10 @@ class MapManager:
             posicion_encontrada = False
             while not posicion_encontrada:
                 
-                # 1. Genera una posición candidata UNA SOLA VEZ por intento
-                pos = (random.randint(5, self.width - 5), random.randint(5, self.height - 5))
+                # 1. Genera una posición candidata DENTRO de la zona segura
+                x_candidato = random.randint(x_min_seguro, x_max_seguro)
+                y_candidato = random.randint(y_min_seguro, y_max_seguro)
+                pos = (x_candidato, y_candidato)
 
                 # 2. Chequea si la posición está libre usando la función posicion_libre
                 if self.posicion_libre(pos[0], pos[1]):
@@ -147,7 +160,7 @@ class MapManager:
                     imagen = None
                     # 3. Usa if/elif para crear la mina correcta
                     if class_name == "MinaCircular":
-                        imagen = pygame.image.load("imagenes\minaCircular.png")
+                        imagen = pygame.image.load("imagenes/minaCircular.png")
                         radius = valores.get("radius")
                         # Escalar imagen
                         imagen_escalada = pygame.transform.smoothscale(imagen, (int(CONSTANTES.CELDA_ANCHO), int(CONSTANTES.CELDA_ALTO)))
