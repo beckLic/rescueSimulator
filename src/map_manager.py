@@ -211,16 +211,15 @@ class MapManager:
         
         self._colocar_recursos(grupo_items)       
   
-    def generar_mapa_pathfinding(self):
+    def generar_mapa_pathfinding(self, obstaculos_temporales=None):
         """
         Crea y devuelve un mapa de pathfinding
-        basada en el radio de acción de las minas estaticas.
+        basada en el radio de acción de las minas estaticas Y obstáculos temporales.
 
-        Las minas móviles se ignoran a propósito,
-        ya que A* es un algoritmo estático y la evasión de minas
-        móviles debe ser manejada por la IA del vehículo en tiempo real.
-        
-        (VERSIÓN REVERTIDA: Ya no acepta 'grupo_vehiculos')
+        Devuelve:
+            list[list[int]]: Una grilla donde:
+                - 0: La celda es segura (caminable).
+                - 1: La celda es un obstáculo (mina estática o vehículo bloqueador).
         """
         
         # 1. Creamos un mapa nuevo, asumiendo que todo es caminable (0)
@@ -231,24 +230,23 @@ class MapManager:
             for x in range(self.width):
                 pos_actual = (x, y)
                 
-                # 3. Comprobamos esta celda contra la lista de minas
+                # 3. Comprobamos esta celda contra la lista de minas estáticas
                 for mina in self.mines:
-                    
-                    # 4. IGNORAMOS las minas móviles para el pathfinding estático
                     if isinstance(mina, MinaMovil):
                         continue 
-                        
-                    # 5. Usamos el método 'is_inside_area' de la mina
                     if mina.is_inside_area(pos_actual):
-                        
-                        # Si está en el área, marcar como obstáculo (1)
                         mapa_pf[y][x] = 1
-                        
-                        # Optimización: No necesitamos chequear otras minas
-                        # para esta celda, ya es un obstáculo.
                         break 
         
-        # 6. Devolvemos el mapa de 0s y 1s
+        if obstaculos_temporales:
+            for pos_xy in obstaculos_temporales:
+                # La posición viene como (x, y)
+                x_obst, y_obst = int(pos_xy[0]), int(pos_xy[1])
+                # Validar que esté en el mapa
+                if 0 <= y_obst < self.height and 0 <= x_obst < self.width:
+                    mapa_pf[y_obst][x_obst] = 1 # Marcar como obstáculo
+
+        # 5. Devolvemos el mapa de 0s y 1s
         return mapa_pf
     
     def es_posicion_valida(self, x, y):
