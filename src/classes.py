@@ -534,15 +534,72 @@ class Mina(pygame.sprite.Sprite):
         self.position = position
         self.item_type = "mina"
     def update(self, grupo_vehiculos, mapa, game_time):
-        vehiculo_colisionado = pygame.sprite.spritecollideany(self, grupo_vehiculos)
-        # Comprobar colisión con cualquier vehículo
-        if vehiculo_colisionado:
-            print(f"¡BOOM! Mina explota sobre {vehiculo_colisionado.id}.")
+        
+        # Iteramos sobre una copia .sprites() para poder modificar el grupo
+        for vehiculo in grupo_vehiculos.sprites():
             
-            vehiculo_colisionado.kill() # Daña/elimina el vehículo
+            # Convertimos la posición flotante del vehículo a una tupla de enteros (x, y)
+            pos_vehiculo_xy = (int(vehiculo.posicion.x), int(vehiculo.posicion.y))
             
-            mapa.eliminar_elemento(self.position[0], self.position[1])
-            self.kill() # La mina también se destruye
+            # ¡Usamos is_inside_area!
+            # Para MinaCircular/Lineal, esto chequeará el radio.
+            # Para MinaMovil, esta MISMA LLAMADA (self.is_inside_area)
+            # revisará internamente si 'is_active' es True.
+            if self.is_inside_area(pos_vehiculo_xy):
+                
+                # ¡Colisión detectada!
+                print(f"¡BOOM! Mina en {self.position} explota sobre {vehiculo.id}.")
+                
+                vehiculo.kill() # Daña/elimina el vehículo
+                
+                # Las minas móviles (MinaMovil) NO se autodestruyen.
+                # Así que solo matamos la mina si NO es una MinaMovil.
+                if not isinstance(self, MinaMovil):
+                    mapa.eliminar_elemento(self.position[0], self.position[1])
+                    self.kill() # La mina estática también se destruye
+                    # Como la mina estática se destruyó, no necesitamos
+                    # seguir chequeando si choca con otros vehículos.
+                    break 
+                
+                # Si es una MinaMovil, no se destruye y puede
+                # seguir explotando en el mismo frame (multikill)
+    def draw_radius(self, surface):
+        """
+        Dibuja el área de efecto LÓGICA de la mina, celda por celda.
+        Esto es visualmente preciso con la lógica de colisión.
+        """
+        # Para MinaMovil, si no está activa, no dibuja nada.
+        if isinstance(self, MinaMovil) and not self.is_active:
+            return
+
+        color_area = (255, 0, 0, 100) # Rojo semitransparente
+
+        # Radio máximo de celdas a chequear (optimización)
+        # Basado en el radio/largo más grande de tu config (que es 10)
+        max_check_radius = 15 
+        
+        # Iteramos en un cuadrado de celdas alrededor de la mina
+        for x in range(self.position[0] - max_check_radius, self.position[0] + max_check_radius + 1):
+            for y in range(self.position[1] - max_check_radius, self.position[1] + max_check_radius + 1):
+                
+                # Nos aseguramos de no chequear celdas fuera del mapa
+                # (Asumiendo un mapa de 50x50 de CONSTANTES)
+                if not (0 <= x < CONSTANTES.CANTIDAD_I and 0 <= y < CONSTANTES.CANTIDAD_J):
+                    continue
+
+                # Preguntamos a la lógica si esta celda (x,y) es peligrosa
+                if self.is_inside_area((x, y)):
+                    
+                    # Si es peligrosa, dibujamos un RECTÁNGULO en esa celda
+                    pixel_x = x * CONSTANTES.CELDA_ANCHO
+                    pixel_y = y * CONSTANTES.CELDA_ALTO
+                    
+                    # Creamos una superficie para la celda (para la transparencia)
+                    s = pygame.Surface((CONSTANTES.CELDA_ANCHO, CONSTANTES.CELDA_ALTO), pygame.SRCALPHA)
+                    pygame.draw.rect(s, color_area, (0, 0, CONSTANTES.CELDA_ANCHO, CONSTANTES.CELDA_ALTO))
+                    
+                    # Dibujamos esa celda en la ventana
+                    surface.blit(s, (pixel_x, pixel_y))
 #-------------------------------------------------------------------------------------------------------------
 class MinaCircular(Mina):
     """
@@ -563,15 +620,8 @@ class MinaCircular(Mina):
         distance = math.sqrt((point[0] - self.position[0])**2 + (point[1] - self.position[1])**2)
         # Devuelve True si la distancia es menor o igual al radio
         return distance <= self.radius
-    def draw_radius(self, surface):
-        # Convertimos el radio de grilla a píxeles
-        # (Usamos ANCHO como referencia, asumiendo celdas casi cuadradas)
-        pixel_radius = self.radius * CONSTANTES.CELDA_ANCHO 
         
-        # Dibujar un círculo rojo semitransparente
-        s = pygame.Surface((pixel_radius * 2, pixel_radius * 2), pygame.SRCALPHA) 
-        pygame.draw.circle(s, (255, 0, 0, 100), (pixel_radius, pixel_radius), pixel_radius)
-        surface.blit(s, (self.rect.centerx - pixel_radius, self.rect.centery - pixel_radius))
+        
 #-------------------------------------------------------------------------------------------------------------
 class MinaLineal(Mina):
     """
@@ -605,37 +655,7 @@ class MinaLineal(Mina):
             y_in_range = (my - offset) <= py <= (my + offset) # y la 'y' debe estar dentro del segmento de la línea.
             #OPERADOR AND PARA RETURNAR TRUE O FALSE
             return x_match and y_in_range
-    def draw_radius(self, surface):
-        """Dibuja el área de efecto rectangular de la mina lineal."""
-        
-        # Color rojo semitransparente (R, G, B, Alpha)
-        color_area = (255, 0, 0, 100) 
-        
-        if self.orientation == 'Horizontal':
-            # Ancho total en píxeles (largo de la mina)
-            width_px = self.length * CONSTANTES.CELDA_ANCHO
-            # Alto total en píxeles (siempre 1 celda)
-            height_px = CONSTANTES.CELDA_ALTO
-            
-        else: # 'Vertical'
-            # Ancho total en píxeles (siempre 1 celda)
-            width_px = CONSTANTES.CELDA_ANCHO
-            # Alto total en píxeles (largo de la mina)
-            height_px = self.length * CONSTANTES.CELDA_ALTO
-        
-        # Creamos una superficie transparente del tamaño del área de efecto
-        s = pygame.Surface((width_px, height_px), pygame.SRCALPHA)
-        
-        # Dibujamos el rectángulo de peligro en esa superficie
-        pygame.draw.rect(s, color_area, (0, 0, width_px, height_px))
-        
-        # Calculamos la esquina superior izquierda para centrar el área
-        # basado en el centro del sprite de la mina
-        top_left_x = self.rect.centerx - (width_px / 2)
-        top_left_y = self.rect.centery - (height_px / 2)
-        
-        # 'Bliteamos' (dibujamos) la superficie de rango sobre la ventana principal
-        surface.blit(s, (top_left_x, top_left_y))
+    
 
 class MinaMovil(MinaCircular):
     """
@@ -658,6 +678,8 @@ class MinaMovil(MinaCircular):
         if game_time > 0 and game_time % self.cycle_duration == 0:
             self.is_active = not self.is_active
             # print(f"Mina móvil en {self.position} ahora está {'activa' if self.is_active else 'inactiva'}")
+        # 2. Llama al 'update' de la clase Mina (que ahora contiene
+        #    la lógica de explosión de área que acabamos de escribir)
         super().update(grupo_vehiculos, mapa, game_time)
     def is_inside_area(self, point: tuple) -> bool:
         # La mina solo puede causar daño si su estado es activo.
