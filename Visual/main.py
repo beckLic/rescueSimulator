@@ -133,7 +133,7 @@ run = True
 simulacion_iniciada = False
 inicializar_simulacion()
 while run:
-    reloj.tick(10)#FPS
+    reloj.tick(5)#FPS
     game_time += 1
     ventana.fill(CONSTANTES.COLOR_NEGRO)
     # Dibujamos el fondo del panel de UI
@@ -187,9 +187,8 @@ while run:
             
     # Archivo: Visual/main.py
 
-# (Busca y REEMPLAZA la última sección del bucle 'while run:')
 
-    # --- Dibujar HUD (MODIFICADO) ---
+    # --- Dibujar HUD ---
     
     # Puntajes (lado izquierdo/centro)
     texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255))
@@ -200,10 +199,10 @@ while run:
     ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
     ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
     
-    # Controles (botones en el lado izquierdo)
+    # Controles
     dibujar_controles(simulacion_finalizada)
 
-    # --- (NUEVO) Dibujar Ganador (lado derecho) ---
+    # --- Dibujar Ganador ---
     if simulacion_finalizada:
         texto_str = ""
         color_texto = (255, 255, 255) # Blanco por defecto
@@ -220,9 +219,6 @@ while run:
 
         # Renderizar texto del ganador
         texto_ganador = fuente_hud.render(texto_str, True, color_texto)
-        
-        # Calcular posición en la DERECHA del HUD
-        # Usamos .get_rect() para alinear el texto a la derecha
         
         # Posición X: El ancho total de la ventana menos un margen de 50px
         pos_x_derecha = CONSTANTES.VENTANA_ANCHO_TOTAL - 50 

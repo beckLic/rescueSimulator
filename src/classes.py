@@ -1,6 +1,7 @@
 #CLASES DE VEHICULOS
 import math
 import pygame
+import random
 from src.pathfinding import *
 from Visual import CONSTANTES
 class Vehiculo(pygame.sprite.Sprite):
@@ -109,7 +110,7 @@ class Vehiculo(pygame.sprite.Sprite):
 
     def _evaluar_siguiente_paso(self, map_manager, grupo_vehiculos):
         """
-        (MODIFICADO) Revisa peligros y devuelve un tipo de peligro específico.
+        Revisa peligros y devuelve un tipo de peligro específico.
         Retorna: (siguiente_pos_yx, tipo_peligro (str), vehiculo_bloqueador (obj))
         """
         if not self.camino_actual:
@@ -150,7 +151,7 @@ class Vehiculo(pygame.sprite.Sprite):
 
     def _resolver_siguiente_paso(self, map_manager, grupo_vehiculos):
         """
-        (NUEVO) Helper que contiene la lógica de movimiento, evasión y recálculo.
+        Helper que contiene la lógica de movimiento, evasión y recálculo.
         Es llamado por update() en los estados 'buscando' y 'volviendo'.
         """
         # 1. Evaluar el siguiente paso
@@ -165,7 +166,7 @@ class Vehiculo(pygame.sprite.Sprite):
             self._actualizar_posicion_pixel(siguiente_pos_xy, pos_anterior)
             self.camino_actual.pop(0) 
             
-            # --- LÓGICA DE LLEGADA (Movida desde update) ---
+            # --- LÓGICA DE LLEGADA ---
             if not self.camino_actual:
                 if self.estado == "buscando":
                     self.recolectar(self.objetivo_actual, map_manager)
@@ -201,7 +202,7 @@ class Vehiculo(pygame.sprite.Sprite):
         elif tipo_peligro == "VEHICULO":
             # ¡Bloqueado por un vehículo!
             
-            # (NUEVO) Aplicar regla de desempate por ID
+            # Aplicar regla de desempate por ID
             # El vehículo con el ID "mayor" (alfabéticamente) es el que cede.
             if self.id > vehiculo_bloqueador.id:
                 print(f"{self.id} (cede) recalculando ruta alrededor de {vehiculo_bloqueador.id}")
@@ -227,10 +228,9 @@ class Vehiculo(pygame.sprite.Sprite):
                         print(f"{self.id} no encontró ruta alternativa. Esperando...")
                         pass 
                 else:
-                    # No tenía un destino claro (raro), mejor esperar.
+                    # No tenía un destino claro, mejor esperar.
                     pass
             else:
-                # Nuestro ID es "menor", tenemos prioridad. Esperamos.
                 print(f"{self.id} (espera) tiene prioridad sobre {vehiculo_bloqueador.id}")
                 pass # Esperamos a que el otro vehículo (con id >) se mueva
 
@@ -676,32 +676,94 @@ class MinaLineal(Mina):
 class MinaMovil(MinaCircular):
     """
     Representa la Mina G1, que es circular pero aparece y desaparece.
-    Hereda de CircularMine para reutilizar la lógica de su área de efecto
+    También cambia de posición cada vez que se activa (reaparece).
     """
-    #INICIALIZAMOS CON LOS PARAMETROS DE POSICION, RADIO Y TIEMPO DE APARICION
     def __init__(self, position: tuple, radius: int, cycle_duration: int, imagen: pygame.Surface):
-        # Nota: Pasamos la imagen al padre (MinaCircular)
         super().__init__(position, radius, imagen)
         self.cycle_duration = cycle_duration
         self.is_active = True
+        
+        # Márgenes de seguridad para el reposicionamiento
+        self.MARGEN_LATERAL_BASES = 10 
+        self.MARGEN_SUPERIOR_INFERIOR = 5
+
+    def _cambiar_posicion(self, mapa):
+        """
+        Busca una nueva posición aleatoria y segura en el mapa y
+        actualiza su propia posición y la grilla del map_manager.
+        
+        'mapa' es la instancia de MapManager.
+        """
+        print(f"Mina G1 en {self.position} buscando nueva posición...")
+        
+        # 1. Definir la zona segura para 'aparecer'
+        x_min_seguro = self.MARGEN_LATERAL_BASES
+        x_max_seguro = mapa.width - 1 - self.MARGEN_LATERAL_BASES
+        y_min_seguro = self.MARGEN_SUPERIOR_INFERIOR
+        y_max_seguro = mapa.height - 1 - self.MARGEN_SUPERIOR_INFERIOR
+
+        # 2. Buscar una nueva posición
+        posicion_encontrada = False
+        intentos = 0 # Para evitar un bucle infinito si el mapa está lleno
+        
+        while not posicion_encontrada and intentos < 100:
+            intentos += 1
+            x_candidato = random.randint(x_min_seguro, x_max_seguro)
+            y_candidato = random.randint(y_min_seguro, y_max_seguro)
+            
+            # Usamos el helper del map_manager para ver si la celda está vacía
+            if mapa.posicion_libre(x_candidato, y_candidato):
+                
+                # 3. ¡Posición encontrada! Actualizar todo.
+                
+                # 3a. Borrarse de la grilla vieja (importante)
+                mapa.eliminar_elemento(self.position[0], self.position[1])
+
+                # 3b. Actualizar su propia posición (lógica)
+                self.position = (x_candidato, y_candidato)
+                
+                # 3c. Inscribirse en la grilla nueva (importante)
+                mapa.grid[y_candidato][x_candidato] = self
+                
+                # 3d. Actualizar el 'rect' (visual)
+                pixel_x = self.position[0] * CONSTANTES.CELDA_ANCHO + (CONSTANTES.CELDA_ANCHO / 2)
+                pixel_y = self.position[1] * CONSTANTES.CELDA_ALTO + (CONSTANTES.CELDA_ALTO / 2)
+                self.rect.center = (pixel_x, pixel_y)
+                
+                print(f"Mina G1 reubicada en {self.position}.")
+                posicion_encontrada = True
+                
+        if not posicion_encontrada:
+             print(f"ADVERTENCIA: Mina G1 no pudo encontrar nueva posición. Se queda en {self.position}.")
+
 
     def update(self, grupo_vehiculos, mapa, game_time):
         """
         Actualiza el estado de la mina (activa/inactiva) basado en el
-        tiempo de la simulación, como se especifica en el proyecto.
+        tiempo de la simulación (game_time).
+        Si ACABA de aparecer (transición a activa), cambia de posición.
         """
-        # Cada 'cycle_duration' instancias de tiempo, el estado cambia.
+        
+        # 1. Chequear si el ciclo se cumplió
         if game_time > 0 and game_time % self.cycle_duration == 0:
+            # 1a. Invertir estado
             self.is_active = not self.is_active
             # print(f"Mina móvil en {self.position} ahora está {'activa' if self.is_active else 'inactiva'}")
-        # 2. Llama al 'update' de la clase Mina (que ahora contiene
-        #    la lógica de explosión de área que acabamos de escribir)
+
+            # 1b. Si ahora está ACTIVA (acaba de aparecer), cambiar de posición
+            if self.is_active:
+                self._cambiar_posicion(mapa) # 'mapa' es el map_manager
+        
+        # 2. Llama al 'update' de la clase Mina (que contiene
+        #    la lógica de explosión si está activa)
         super().update(grupo_vehiculos, mapa, game_time)
+
     def is_inside_area(self, point: tuple) -> bool:
-        # La mina solo puede causar daño si su estado es activo.
+        """
+        La mina solo puede causar daño si su estado es activo.
+        """
         if not self.is_active:
             return False
         
-        # Si está activa, utiliza la misma lógica de su clase padre (CircularMine).
+        # Si está activa, utiliza la misma lógica de su clase padre (MinaCircular).
         return super().is_inside_area(point)
-
