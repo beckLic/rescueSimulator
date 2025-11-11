@@ -38,7 +38,7 @@ class Recorder:
         self.seed = seed
         self.f = gzip.open(path, "wt", newline="", encoding="utf-8") if path.endswith(".gz") else open(path, "w", newline="", encoding="utf-8")
         self.w = csv.writer(self.f)
-        self.w.writerow(["meta", json.dumps({"version": FORMAT_VERSION, "fps": fps, "seed": seed})])
+        self.w.writerow(["meta", json.dumps({"version": CONSTANTES.FORMAT_VERSION, "fps": fps, "seed": seed})])
 
     def log_frame(self, frame, mapa, vehiculos):
         veh_states = []
@@ -85,6 +85,8 @@ class Replayer:
 
     def get_state(self, frame):
         return self.frames.get(frame)
+
+
 def dibujar_grid():
     # El grid solo se dibuja hasta el alto del MAPA
     for x in range(51):
@@ -102,10 +104,13 @@ grupo_vehiculos = pygame.sprite.Group()
 mapa.colocar_minas(grupo_items)
 mapa._colocar_recursos(grupo_items)
 # Botones: Movemos la coordenada Y al panel de UI (MAPA_ALTO + offset)
-boton_init = pygame.Rect(50, CONSTANTES.MAPA_ALTO + 30, 120, 40)
-boton_play = pygame.Rect(200, CONSTANTES.MAPA_ALTO + 30, 120, 40)
+boton_init   = pygame.Rect(50,  CONSTANTES.MAPA_ALTO + 30, 120, 40)
+boton_play   = pygame.Rect(190, CONSTANTES.MAPA_ALTO + 30, 120, 40)
+boton_record = pygame.Rect(330, CONSTANTES.MAPA_ALTO + 30, 120, 40)
+boton_replay = pygame.Rect(470, CONSTANTES.MAPA_ALTO + 30, 120, 40)
 simulacion_iniciada = False
 
+<<<<<<< HEAD
 def dibujar_pantalla_final():
     """
     Dibuja la pantalla de estadísticas de fin de juego.
@@ -189,6 +194,8 @@ def dibujar_pantalla_final():
     
     
 
+=======
+>>>>>>> 9d13d88 (Implementando el replay y el record)
 
 def dibujar_controles(finalizada):
     """
@@ -197,15 +204,25 @@ def dibujar_controles(finalizada):
     Muestra "Play" solo si el juego NO ha terminado.
     """
     fuente_botones = pygame.font.SysFont(None, 24)
-    
-    # Botón Init (siempre se dibuja)
+
+    # --- Botón Init (siempre) ---
     pygame.draw.rect(ventana, (0, 200, 0), boton_init)
     ventana.blit(fuente_botones.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
 
-    # Botón Play (solo si el juego no ha terminado)
-    if not finalizada:
+    # --- Solo si la simulación NO ha iniciado ni finalizado ---
+    if not simulacion_iniciada and not finalizada:
+        # Botón Play
         pygame.draw.rect(ventana, (0, 0, 200), boton_play)
         ventana.blit(fuente_botones.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
+
+        # Botón Record
+        pygame.draw.rect(ventana, (200, 0, 0), boton_record)
+        ventana.blit(fuente_botones.render("Record", True, (255,255,255)), (385, CONSTANTES.MAPA_ALTO + 40))
+
+        # Botón Replay (si existe un replay grabado)
+        if os.path.exists(CSV_PATH):
+            pygame.draw.rect(ventana, (100, 100, 100), boton_replay)
+            ventana.blit(fuente_botones.render("Replay", True, (255,255,255)), (535, CONSTANTES.MAPA_ALTO + 40))
 # --- Función para (re)iniciar la simulación ---
 def inicializar_simulacion():
 
@@ -387,9 +404,23 @@ while run:
             elif boton_play.collidepoint(event.pos) and not simulacion_iniciada and not simulacion_finalizada:
                 simulacion_iniciada = True
                 print("Simulación iniciada")
+            elif boton_record.collidepoint(event.pos) and not simulacion_iniciada and not simulacion_finalizada:
+                MODO = "record"
+                CSV_PATH = CONSTANTES.REPLAY_DEFAULT_PATH
+                inicializar_simulacion()
+                simulacion_iniciada = True
+                print("[▶️] Grabando...")
+
+            elif boton_replay.collidepoint(event.pos) and not simulacion_iniciada and not simulacion_finalizada:
+                if os.path.exists(CSV_PATH):
+                    MODO = "replay"
+                    inicializar_simulacion()
+                    simulacion_iniciada = True
+                    print("[🔁] Reproduciendo...")
     
     # --- Lógica de Simulación (Solo si está iniciada) ---
     if simulacion_iniciada:
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 
@@ -399,6 +430,8 @@ while run:
             
             # 2. Chequear colisiones entre vehículos
 
+=======
+>>>>>>> 9d13d88 (Implementando el replay y el record)
         if MODO in ("run", "record"):
             # 1. Actualiza la IA de los vehículos (aquí cambian su self.posicion)
             grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
@@ -414,41 +447,46 @@ while run:
         if recorder:
             recorder.log_frame(game_time, mapa, grupo_vehiculos)
 
-    elif MODO == "replay":
-        state = replayer.get_state(game_time)
-        if state:
-            # Puntajes
-            mapa.puntaje_j1 = state["puntajes"]["j1"]
-            mapa.puntaje_j2 = state["puntajes"]["j2"]
+        elif MODO == "replay":
+            state = replayer.get_state(game_time)
+            if state:
+                # Puntajes
+                mapa.puntaje_j1 = state["puntajes"]["j1"]
+                mapa.puntaje_j2 = state["puntajes"]["j2"]
 
-            # Sin IA: sólo sincronizamos sprites con la foto del frame
-            vivos_set = set()
-            by_id = {v.id: v for v in grupo_vehiculos.sprites()}
+                # Sin IA: sólo sincronizamos sprites con la foto del frame
+                vivos_set = set()
+                by_id = {v.id: v for v in grupo_vehiculos.sprites()}
 
-            for vs in state["vehiculos"]:
-                vivos_set.add(vs["id"])
-                v = by_id.get(vs["id"])
-                if v and vs["alive"]:
-                    v.posicion.x = vs["x"]
-                    v.posicion.y = vs["y"]
-                elif v and not vs["alive"]:
-                    v.kill()
+                for vs in state["vehiculos"]:
+                    vivos_set.add(vs["id"])
+                    v = by_id.get(vs["id"])
+                    if v and vs["alive"]:
+                        v.posicion.x = vs["x"]
+                        v.posicion.y = vs["y"]
+                    elif v and not vs["alive"]:
+                        v.kill()
 
-            # Si quedó algún sprite no listado como vivo, lo eliminamos
-            for v in list(grupo_vehiculos.sprites()):
-                if v.id not in vivos_set:
-                    v.kill()
-        else:
-            # Fin del replay
-            simulacion_iniciada = False
-            
-            
-            # 4.Chequear condiciones de fin de juego
-            # Un grupo de sprites vacío evalúa como False
-            if not mapa.resources or not grupo_vehiculos:
+                # Si quedó algún sprite no listado como vivo, lo eliminamos
+                for v in list(grupo_vehiculos.sprites()):
+                    if v.id not in vivos_set:
+                        v.kill()
+            else:
+                # Fin del replay
                 simulacion_iniciada = False
-                simulacion_finalizada = True
-                print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
+                
+                if recorder:
+                    recorder.close()
+                    from src.replay_stats import analizar_replay
+                    analizar_replay(CSV_PATH)
+
+                
+                # 4.Chequear condiciones de fin de juego
+                # Un grupo de sprites vacío evalúa como False
+                if not mapa.resources or not grupo_vehiculos:
+                    simulacion_iniciada = False
+                    simulacion_finalizada = True
+                    print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
 
             
     # Archivo: Visual/main.py
@@ -459,11 +497,10 @@ while run:
     # Puntajes (lado izquierdo/centro)
     texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255))
     texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100))
-    
-    pygame.draw.rect(ventana, (0,0,0), (345, CONSTANTES.MAPA_ALTO + 20, 250, 65))
-    
-    ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
-    ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
+
+    pygame.draw.rect(ventana, (0,0,0), (610, CONSTANTES.MAPA_ALTO + 20, 350, 65))
+    ventana.blit(texto_j1, (620, CONSTANTES.MAPA_ALTO + 25))
+    ventana.blit(texto_j2, (620, CONSTANTES.MAPA_ALTO + 55))
     
     # Controles
     dibujar_controles(simulacion_finalizada)
