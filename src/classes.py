@@ -132,16 +132,36 @@ class Vehiculo(pygame.sprite.Sprite):
 
         # 2. Revisar contra otros vehículos
         if grupo_vehiculos: 
-            for vehiculo in grupo_vehiculos.sprites():
-                if vehiculo == self:
+            for vehiculo_bloqueador in grupo_vehiculos.sprites():
+                # Un vehículo no puede bloquearse a sí mismo
+                if vehiculo_bloqueador == self:
                     continue
                 
-                vehiculo_pos_xy = (int(vehiculo.posicion.x), int(vehiculo.posicion.y))
+                # Posición actual (x,y) del otro vehículo
+                vehiculo_pos_xy = (int(vehiculo_bloqueador.posicion.x), int(vehiculo_bloqueador.posicion.y))
                 
+                # Si el otro vehículo está en nuestro siguiente paso...
                 if vehiculo_pos_xy == siguiente_pos_xy:
-                    peligro_detectado = True
-                    print(f"{self.id} FRENANDO (VEHICULO): ¡{vehiculo.id} está bloqueando {siguiente_pos_xy}!")
-                    break 
+                    
+                    # --- ¡AQUÍ ESTÁ LA LÓGICA DE ATAQUE! ---
+                    
+                    # Primero, revisamos si es un compañero
+                    if vehiculo_bloqueador.jugador_id == self.jugador_id:
+                        # ES UN COMPAÑERO: Siempre esperamos.
+                        print(f"{self.id} FRENANDO (COMPAÑERO): {vehiculo_bloqueador.id} está en {siguiente_pos_xy}.")
+                        peligro_detectado = True
+                    
+                    # ES UN ENEMIGO: Ahora aplicamos la lógica de ataque
+                    elif vehiculo_bloqueador.carga_actual:
+                        # ENEMIGO CON CARGA: ¡Atacar!
+                        print(f"{self.id} ¡ATACANDO! {vehiculo_bloqueador.id} (Enemigo) tiene carga en {siguiente_pos_xy}")
+                        peligro_detectado = False # Falso = No hay peligro = Avanzar
+                    else:
+                        # ENEMIGO VACÍO: Esperar.
+                        print(f"{self.id} FRENANDO (ENEMIGO VACÍO): {vehiculo_bloqueador.id} está en {siguiente_pos_xy}.")
+                        peligro_detectado = True
+                    
+                    break # Ya encontramos el vehículo que bloquea, no seguimos buscando
             
         return siguiente_pos_yx, peligro_detectado
 

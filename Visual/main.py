@@ -75,10 +75,10 @@ def inicializar_simulacion():
     # (El mapa es 50x50, así que usamos coordenadas opuestas)
     base_jugador_2 = (44, 44) # (x, y) en grilla (esquina inferior derecha)
 
-    jeep_ia_2 = Jeep(id="J-IA-2", jugador_id=2, pos_inicial=(49, 0), posicion_base=base_jugador_2)
-    moto_ia_2 = Moto(id="M-IA-2", jugador_id=2, pos_inicial=(49, 5), posicion_base=base_jugador_2)
-    camion_ia_2 = Camion(id="C-IA-2", jugador_id=2, pos_inicial=(49, 10), posicion_base=base_jugador_2)
-    auto_ia_2 = Auto(id="A-IA-2", jugador_id=2, pos_inicial=(49, 15), posicion_base=base_jugador_2)
+    jeep_ia_2 = Jeep(id="J-IA-2", jugador_id=2, pos_inicial=(0, 30), posicion_base=base_jugador_2)
+    moto_ia_2 = Moto(id="M-IA-2", jugador_id=2, pos_inicial=(0, 35), posicion_base=base_jugador_2)
+    camion_ia_2 = Camion(id="C-IA-2", jugador_id=2, pos_inicial=(0, 40), posicion_base=base_jugador_2)
+    auto_ia_2 = Auto(id="A-IA-2", jugador_id=2, pos_inicial=(0, 45), posicion_base=base_jugador_2)
 
     # 4. Añadirlos TODOS al grupo de vehículos
     grupo_vehiculos.add(
