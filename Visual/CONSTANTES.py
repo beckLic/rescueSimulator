@@ -26,3 +26,9 @@ CANTIDAD_J=50
 CELDA_ANCHO = MAPA_ANCHO / CANTIDAD_I
 CELDA_ALTO = MAPA_ALTO / CANTIDAD_J
 
+
+
+REPLAY_DEFAULT_PATH = "data/simulations/replay.csv.gz"
+FPS = 20              # debe coincidir con tu reloj.tick(20)
+FORMAT_VERSION = 1
+GLOBAL_SEED = 123456  # semilla fija p/determinismo

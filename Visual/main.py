@@ -4,7 +4,10 @@ import pygame
 from Visual import CONSTANTES
 from src.map_manager import MapManager
 from src.classes import load_resource_config, Jeep, Moto, Camion, Auto
+import csv, json, gzip, random, argparse, os
 
+CSV_PATH = CONSTANTES.REPLAY_DEFAULT_PATH 
+MODO = "run"          # "run" | "record" | "replay"
 
 pygame.init()
 fuente_hud = pygame.font.SysFont("Arial", 30)
@@ -23,6 +26,65 @@ minaLineal=pygame.image.load("imagenes/minaLineal.png") # Corregí la barra \
 minaMovil=pygame.image.load("imagenes/minaMovil.png")
 
 game_time = 0 #tiempo del algoritmo
+recorder = None
+replayer = None
+
+# ---------- Grabador de estados por frame ----------
+class Recorder:
+    def __init__(self, path, fps, seed):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        self.path = path
+        self.fps = fps
+        self.seed = seed
+        self.f = gzip.open(path, "wt", newline="", encoding="utf-8") if path.endswith(".gz") else open(path, "w", newline="", encoding="utf-8")
+        self.w = csv.writer(self.f)
+        self.w.writerow(["meta", json.dumps({"version": FORMAT_VERSION, "fps": fps, "seed": seed})])
+
+    def log_frame(self, frame, mapa, vehiculos):
+        veh_states = []
+        for v in vehiculos.sprites():
+            veh_states.append({
+                "id": getattr(v, "id", "?"),
+                "jug": getattr(v, "jugador_id", None),
+                "x": int(getattr(v, "posicion").x),
+                "y": int(getattr(v, "posicion").y),
+                "alive": True
+            })
+        row = {
+            "t": frame,
+            "puntajes": {"j1": mapa.puntaje_j1, "j2": mapa.puntaje_j2},
+            "vehiculos": veh_states
+        }
+        self.w.writerow(["frame", json.dumps(row)])
+
+    def log_event(self, frame, kind, data):
+        self.w.writerow(["event", json.dumps({"t": frame, "kind": kind, "data": data})])
+
+    def close(self):
+        self.f.close()
+
+# ---------- Reproductor ----------
+class Replayer:
+    def __init__(self, path):
+        f = gzip.open(path, "rt", newline="", encoding="utf-8") if path.endswith(".gz") else open(path, "r", newline="", encoding="utf-8")
+        r = csv.reader(f)
+        self.meta = None
+        self.frames = {}  # t -> snapshot
+        for typ, payload in r:
+            if typ == "meta":
+                self.meta = json.loads(payload)
+            elif typ == "frame":
+                row = json.loads(payload)
+                self.frames[row["t"]] = row
+            elif typ == "event":
+                pass
+        f.close()
+        if not self.meta:
+            raise ValueError("CSV de replay inválido: falta meta")
+        self.max_t = max(self.frames.keys()) if self.frames else 0
+
+    def get_state(self, frame):
+        return self.frames.get(frame)
 def dibujar_grid():
     # El grid solo se dibuja hasta el alto del MAPA
     for x in range(51):
@@ -146,11 +208,22 @@ def dibujar_controles(finalizada):
         ventana.blit(fuente_botones.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
 # --- Función para (re)iniciar la simulación ---
 def inicializar_simulacion():
-    global game_time, simulacion_finalizada
+
+    global game_time, simulacion_finalizada, recorder, replayer
+
     game_time = 0
     simulacion_finalizada = False
     print("Iniciando simulación...")
+<<<<<<< HEAD
     mapa.reiniciar_estadisticas()
+=======
+
+    # 0) Determinismo: fijamos semilla ANTES de generar mapa o crear unidades
+    import random
+    random.seed(CONSTANTES.GLOBAL_SEED)
+
+
+>>>>>>> 068fa64 (Resolviendo conflictos)
     mapa.puntaje_j1 = 0
     mapa.puntaje_j2 = 0
     # 1. Limpiar grupos
@@ -183,6 +256,23 @@ def inicializar_simulacion():
         jeep_ia_1, moto_ia_1, camion_ia_1, auto_ia_1,
         jeep_ia_2, moto_ia_2, camion_ia_2, auto_ia_2
     )
+
+    # 5) Inicializar recorder/replayer según el modo
+    if MODO == "record":
+        recorder = Recorder(
+            CSV_PATH,
+            fps=CONSTANTES.FPS,
+            seed=CONSTANTES.GLOBAL_SEED
+        )
+        replayer = None
+        print(f"[REC] Guardando en: {CSV_PATH}")
+    elif MODO == "replay":
+        replayer = Replayer(CSV_PATH)
+        recorder = None
+        print(f"[REPLAY] Cargando de: {CSV_PATH} (frames: {replayer.max_t + 1})")
+    else:
+        recorder = None
+        replayer = None
 
     print(f"Simulación inicializada con {len(grupo_vehiculos)} vehículos.")
 
@@ -221,6 +311,18 @@ def chequear_colisiones_vehiculos(grupo_vehiculos):
 # --- INICIO DEL BUCLE PRINCIPAL ---
 run = True
 simulacion_iniciada = False
+
+# --- CLI para elegir run/record/replay ---
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--record", nargs="?", const=CSV_PATH, help="Graba la simulación en CSV(.gz)")
+    ap.add_argument("--replay", nargs="?", const=CSV_PATH, help="Reproduce desde CSV(.gz)")
+    args, unknown = ap.parse_known_args()
+    if args.record:
+        MODO = "record"; CSV_PATH = args.record
+    elif args.replay:
+        MODO = "replay"; CSV_PATH = args.replay
+
 inicializar_simulacion()
 while run:
     reloj.tick(10)#FPS
@@ -288,6 +390,89 @@ while run:
     
     # --- Lógica de Simulación (Solo si está iniciada) ---
     if simulacion_iniciada:
+<<<<<<< HEAD
+=======
+
+            
+            # 1. Actualiza la IA de los vehículos
+            grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
+            
+            # 2. Chequear colisiones entre vehículos
+
+        if MODO in ("run", "record"):
+            # 1. Actualiza la IA de los vehículos (aquí cambian su self.posicion)
+            grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
+
+            # 2. Chequear colisiones entre vehículos DESPUÉS de que se movieron
+
+            chequear_colisiones_vehiculos(grupo_vehiculos)
+            
+            # 3. Actualiza los items (para colisiones con minas/recursos)
+            grupo_items.update(grupo_vehiculos, mapa, game_time)
+
+        # Guardar snapshot del frame si estamos grabando
+        if recorder:
+            recorder.log_frame(game_time, mapa, grupo_vehiculos)
+
+    elif MODO == "replay":
+        state = replayer.get_state(game_time)
+        if state:
+            # Puntajes
+            mapa.puntaje_j1 = state["puntajes"]["j1"]
+            mapa.puntaje_j2 = state["puntajes"]["j2"]
+
+            # Sin IA: sólo sincronizamos sprites con la foto del frame
+            vivos_set = set()
+            by_id = {v.id: v for v in grupo_vehiculos.sprites()}
+
+            for vs in state["vehiculos"]:
+                vivos_set.add(vs["id"])
+                v = by_id.get(vs["id"])
+                if v and vs["alive"]:
+                    v.posicion.x = vs["x"]
+                    v.posicion.y = vs["y"]
+                elif v and not vs["alive"]:
+                    v.kill()
+
+            # Si quedó algún sprite no listado como vivo, lo eliminamos
+            for v in list(grupo_vehiculos.sprites()):
+                if v.id not in vivos_set:
+                    v.kill()
+        else:
+            # Fin del replay
+            simulacion_iniciada = False
+            
+            
+            # 4.Chequear condiciones de fin de juego
+            # Un grupo de sprites vacío evalúa como False
+            if not mapa.resources or not grupo_vehiculos:
+                simulacion_iniciada = False
+                simulacion_finalizada = True
+                print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
+
+            
+    # Archivo: Visual/main.py
+
+
+    # --- Dibujar HUD ---
+    
+    # Puntajes (lado izquierdo/centro)
+    texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255))
+    texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100))
+    
+    pygame.draw.rect(ventana, (0,0,0), (345, CONSTANTES.MAPA_ALTO + 20, 250, 65))
+    
+    ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
+    ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
+    
+    # Controles
+    dibujar_controles(simulacion_finalizada)
+
+    # --- Dibujar Ganador ---
+    if simulacion_finalizada:
+        texto_str = ""
+        color_texto = (255, 255, 255) # Blanco por defecto
+>>>>>>> 068fa64 (Resolviendo conflictos)
         
         # 1. Actualiza IA
         grupo_vehiculos.update(mapa, game_time, grupo_vehiculos)
@@ -326,4 +511,11 @@ while run:
 
     pygame.display.update()
 
+<<<<<<< HEAD
 pygame.quit()
+=======
+if recorder:
+    recorder.close()
+pygame.quit()
+    #Debuggin
+>>>>>>> 068fa64 (Resolviendo conflictos)
