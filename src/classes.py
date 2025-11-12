@@ -80,24 +80,30 @@ class Vehiculo(pygame.sprite.Sprite):
         
         Retorna: un objeto Recurso o None si no hay objetivos válidos.
         """
-        recursos_disponibles = map_manager.resources
-        objetivos_validos = []
 
         # 1. Filtrar por tipo de carga permitida
-        for r in recursos_disponibles:
+        objetivos_validos = []
+        for r in map_manager.resources:
             if r.type in self.tipo_carga_permitida:
                 objetivos_validos.append(r)
-        
-        if not objetivos_validos:
-            return None # No hay nada en el mapa que el vehiculo pueda recoger
 
-        # 2. Elegir el "mejor" (Estrategia simple: el más cercano)
-        mejor_objetivo = min(
-            objetivos_validos, 
-            key=lambda r: self.posicion.distance_to(pygame.math.Vector2(r.position))
-        )
-        
-        return mejor_objetivo
+        if not objetivos_validos:
+            return None
+
+        # Prioriza Armamentos y Personas (50 pts)
+        recursos_alta_prio = [r for r in objetivos_validos if r.type == "Armamentos" or r.type == "Personas"]
+        if recursos_alta_prio:
+            # Si hay, elige el MÁS CERCANO de alta prioridad
+            return min(recursos_alta_prio, key=lambda r: self.posicion.distance_to(pygame.math.Vector2(r.position)))
+
+        # Prioriza Medicamentos (20 pts)
+        recursos_media_prio = [r for r in objetivos_validos if r.type == "Medicamentos"]
+        if recursos_media_prio:
+            # Si hay, elige el MÁS CERCANO de media prioridad
+            return min(recursos_media_prio, key=lambda r: self.posicion.distance_to(pygame.math.Vector2(r.position)))
+
+        # Si no hay nada de prioridad, busca lo que queda (Ropa, Alimentos)
+        return min(objetivos_validos, key=lambda r: self.posicion.distance_to(pygame.math.Vector2(r.position)))
 
     def _calcular_camino(self, map_manager, destino_yx, obstaculos_adicionales=None):
         """
