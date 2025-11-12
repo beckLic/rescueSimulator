@@ -1,6 +1,7 @@
 #MOTOR DEL JUEGO
 import random
-from classes import *
+from .classes import *
+import pygame
 class GameEngine:
     def __init__(self):
         self.vehiculos_j1 = []
@@ -9,43 +10,51 @@ class GameEngine:
         self.puntaje_j2 = 0
 
     
-    def _crear_vehiculos(self, map_width, map_height):
+    def _crear_vehiculos(self):
         """
         Modifica self.vehiculos_j1 y self.vehiculos_j2
         llenándolas con las flotas de cada jugador.
         """
+        grupo_vehiculos_creados = pygame.sprite.Group()
+        pos = (4, 4); grupo_vehiculos_creados.add(Jeep(id="J1-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        pos = (4, 8); grupo_vehiculos_creados.add(Jeep(id="J2-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        pos = (4, 12); grupo_vehiculos_creados.add(Jeep(id="J3-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        # 2 Motos
+        pos = (4, 15); grupo_vehiculos_creados.add(Moto(id="M1-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        pos = (4, 20); grupo_vehiculos_creados.add(Moto(id="M2-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        # 2 Camiones
+        pos = (4, 27); grupo_vehiculos_creados.add(Camion(id="C1-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        pos = (4, 32); grupo_vehiculos_creados.add(Camion(id="C2-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        # 3 Autos
+        pos = (4, 39); grupo_vehiculos_creados.add(Auto(id="A1-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        pos = (4, 43); grupo_vehiculos_creados.add(Auto(id="A2-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
+        pos = (4, 47); grupo_vehiculos_creados.add(Auto(id="A3-IA-1", jugador_id=1, pos_inicial=pos, posicion_base=pos))
         
-        # --- 1. Definir Posiciones de Bases ---
-        base_j1_y = random.randint(0, map_height - 1)
-        BASE_J1_POS = (0, base_j1_y)
+        # --- Equipo 2 (Rojo) ---
         
-        base_j2_y = random.randint(0, map_height - 1)
-        BASE_J2_POS = (map_width - 1, base_j2_y)
-
-        print(f"Base Jugador 1 generada en: {BASE_J1_POS}")
-        print(f"Base Jugador 2 generada en: {BASE_J2_POS}")
-
-        # --- 2. Crear Flotas  ---
+        # (posicion_base ahora es igual a pos_inicial)
         
         # 3 Jeeps
-        for i in range(3):
-            self.vehiculos_j1.append(Jeep(f"J1-Jeep-{i+1}", 1, BASE_J1_POS, BASE_J1_POS))
-            self.vehiculos_j2.append(Jeep(f"J2-Jeep-{i+1}", 2, BASE_J2_POS, BASE_J2_POS))
-            
+        pos = (46, 4); grupo_vehiculos_creados.add(Jeep(id="J1-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
+        pos = (46, 8); grupo_vehiculos_creados.add(Jeep(id="J2-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
+        pos = (46, 12); grupo_vehiculos_creados.add(Jeep(id="J3-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
         # 2 Motos
-        for i in range(2):
-            self.vehiculos_j1.append(Moto(f"J1-Moto-{i+1}", 1, BASE_J1_POS, BASE_J1_POS))
-            self.vehiculos_j2.append(Moto(f"J2-Moto-{i+1}", 2, BASE_J2_POS, BASE_J2_POS))
-            
+        pos = (46, 15); grupo_vehiculos_creados.add(Moto(id="M1-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
+        pos = (46, 20); grupo_vehiculos_creados.add(Moto(id="M2-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
         # 2 Camiones
-        for i in range(2):
-            self.vehiculos_j1.append(Camion(f"J1-Camion-{i+1}", 1, BASE_J1_POS, BASE_J1_POS))
-            self.vehiculos_j2.append(Camion(f"J2-Camion-{i+1}", 2, BASE_J2_POS, BASE_J2_POS))
-
+        pos = (46, 27); grupo_vehiculos_creados.add(Camion(id="C1-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
+        pos = (46, 32); grupo_vehiculos_creados.add(Camion(id="C2-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
         # 3 Autos
-        for i in range(3):
-            self.vehiculos_j1.append(Auto(f"J1-Auto-{i+1}", 1, BASE_J1_POS, BASE_J1_POS))
-            self.vehiculos_j2.append(Auto(f"J2-Auto-{i+1}", 2, BASE_J2_POS, BASE_J2_POS))
+        pos = (46, 39); grupo_vehiculos_creados.add(Auto(id="A1-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
+        pos = (46, 43); grupo_vehiculos_creados.add(Auto(id="A2-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
+        pos = (46, 47); grupo_vehiculos_creados.add(Auto(id="A3-IA-2", jugador_id=2, pos_inicial=pos, posicion_base=pos))
             
+        # Llenamos las listas internas del engine (como estaba en tu original)
+        self.vehiculos_j1 = [v for v in grupo_vehiculos_creados if v.jugador_id == 1]
+        self.vehiculos_j2 = [v for v in grupo_vehiculos_creados if v.jugador_id == 2]
+
         print(f"Flota J1 (self) llenada con {len(self.vehiculos_j1)} vehículos.")
         print(f"Flota J2 (self) llenada con {len(self.vehiculos_j2)} vehículos.")
+        
+        # Devolvemos el grupo que main.py usará
+        return grupo_vehiculos_creados

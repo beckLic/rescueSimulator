@@ -3,10 +3,11 @@
 import pygame
 from Visual import CONSTANTES
 from src.map_manager import MapManager
-from src.classes import load_resource_config, Jeep, Moto, Camion, Auto
+from src.game_engine import GameEngine
+from src.classes import load_resource_config,Vehiculo, Jeep, Moto, Camion, Auto, Explosion
 import csv
 import os
-
+import gzip
 pygame.init()
 fuente_hud = pygame.font.SysFont("Arial", 30)
 ventana = pygame.display.set_mode((CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.VENTANA_ALTO_TOTAL))
@@ -15,6 +16,7 @@ RUTA_CONFIG = "config/default_config.json"
 config = load_resource_config(RUTA_CONFIG)
 mapa = MapManager(CONSTANTES.CANTIDAD_I, CONSTANTES.CANTIDAD_J, config)
 pygame.display.set_caption("Rescue Simulator")
+engine = GameEngine()
 simulacion_iniciada = False
 simulacion_pausada = False
 simulacion_finalizada = False
@@ -26,7 +28,9 @@ replay_desde_grabacion = False
 minaLineal=pygame.image.load("imagenes/minaLineal.png") # Corregí la barra \
 minaMovil=pygame.image.load("imagenes/minaMovil.png")
 img_explosion = pygame.image.load("imagenes/explosion.png").convert_alpha()
+img_explosion = pygame.transform.scale(img_explosion, (CONSTANTES.CELDA_ANCHO, CONSTANTES.CELDA_ALTO))
 grupo_explosiones = pygame.sprite.Group() # Grupo para animaciones
+Vehiculo.set_assets_explosiones(img_explosion, grupo_explosiones)
 game_time = 0 #tiempo del algoritmo
 def dibujar_grid():
     # El grid solo se dibuja hasta el alto del MAPA
@@ -70,8 +74,8 @@ def dibujar_controles(finalizada):
     pygame.draw.rect(ventana, (0, 200, 0), boton_init)
     texto_init = fuente_botones.render("Init", True, (255, 255, 255))
     ventana.blit(fuente_botones.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 20))
-    # Botón Play/Pause
-    texto_play_str = "Pause" if not simulacion_pausada else "Play"
+    # Botón Play/Pausa
+    texto_play_str = "Pausa" if not simulacion_pausada else "Play"
     if not simulacion_iniciada and not finalizada:
         # ANTES DE INICIAR: Mostrar "Play" y "Replay Toggle"
         
@@ -87,9 +91,9 @@ def dibujar_controles(finalizada):
         ventana.blit(fuente_botones.render(texto_replay, True, (255,255,255)), (boton_replay.x + 20, boton_replay.y + 10))
     
     elif simulacion_iniciada and not finalizada:
-        # DURANTE LA SIMULACIÓN: Mostrar "Pause" / "Play" (para reanudar)
+        # DURANTE LA SIMULACIÓN: Mostrar "Pausa" / "Play" (para reanudar)
         
-        texto_play_str = "Pause" if not simulacion_pausada else "Play"
+        texto_play_str = "Pausa" if not simulacion_pausada else "Renaudar"
         color_boton_play = (255, 165, 0) # Naranja para Pausa
         if simulacion_pausada:
             color_boton_play = (0, 200, 0) # Verde para Reanudar
@@ -119,7 +123,7 @@ def dibujar_controles(finalizada):
     texto_next = fuente_botones.render(">>", True, (255, 255, 255))
     ventana.blit(texto_next, (boton_next.x + 10, boton_next.y + 10))# --- Función para (re)iniciar la simulación ---
 def inicializar_simulacion():
-    global game_time, simulacion_finalizada
+    global game_time, simulacion_finalizada, grupo_vehiculos, engine
     game_time = 0
     simulacion_finalizada = False
     print("Iniciando simulación...")
@@ -127,48 +131,13 @@ def inicializar_simulacion():
     mapa.puntaje_j2 = 0
     # 1. Limpiar grupos
     grupo_items.empty()
-    grupo_vehiculos.empty()
+    
     
     
     mapa.generar_mapa_aleatorio(grupo_items)
+    grupo_vehiculos = engine._crear_vehiculos()
     
-    
-   # --- Equipo 1 (Azul) ---
-    base_jugador_1 = (5, 5) # (x, y) en grilla (esquina superior izquierda)
-    
-    # 3 Jeeps
-    grupo_vehiculos.add(Jeep(id="J1-IA-1", jugador_id=1, pos_inicial=(5, 5), posicion_base=base_jugador_1))
-    grupo_vehiculos.add(Jeep(id="J2-IA-1", jugador_id=1, pos_inicial=(5, 6), posicion_base=base_jugador_1))
-    grupo_vehiculos.add(Jeep(id="J3-IA-1", jugador_id=1, pos_inicial=(5, 7), posicion_base=base_jugador_1))
-    # 2 Motos
-    grupo_vehiculos.add(Moto(id="M1-IA-1", jugador_id=1, pos_inicial=(6, 5), posicion_base=base_jugador_1))
-    grupo_vehiculos.add(Moto(id="M2-IA-1", jugador_id=1, pos_inicial=(6, 6), posicion_base=base_jugador_1))
-    # 2 Camiones
-    grupo_vehiculos.add(Camion(id="C1-IA-1", jugador_id=1, pos_inicial=(7, 5), posicion_base=base_jugador_1))
-    grupo_vehiculos.add(Camion(id="C2-IA-1", jugador_id=1, pos_inicial=(7, 6), posicion_base=base_jugador_1))
-    # 3 Autos
-    grupo_vehiculos.add(Auto(id="A1-IA-1", jugador_id=1, pos_inicial=(8, 5), posicion_base=base_jugador_1))
-    grupo_vehiculos.add(Auto(id="A2-IA-1", jugador_id=1, pos_inicial=(8, 6), posicion_base=base_jugador_1))
-    grupo_vehiculos.add(Auto(id="A3-IA-1", jugador_id=1, pos_inicial=(8, 7), posicion_base=base_jugador_1))
-    
-    # --- Equipo 2 (Rojo) ---
-    base_jugador_2 = (44, 44) # (x, y) en grilla (esquina inferior derecha)
-    
-    # 3 Jeeps
-    grupo_vehiculos.add(Jeep(id="J1-IA-2", jugador_id=2, pos_inicial=(44, 44), posicion_base=base_jugador_2))
-    grupo_vehiculos.add(Jeep(id="J2-IA-2", jugador_id=2, pos_inicial=(44, 43), posicion_base=base_jugador_2))
-    grupo_vehiculos.add(Jeep(id="J3-IA-2", jugador_id=2, pos_inicial=(44, 42), posicion_base=base_jugador_2))
-    # 2 Motos
-    grupo_vehiculos.add(Moto(id="M1-IA-2", jugador_id=2, pos_inicial=(43, 44), posicion_base=base_jugador_2))
-    grupo_vehiculos.add(Moto(id="M2-IA-2", jugador_id=2, pos_inicial=(43, 43), posicion_base=base_jugador_2))
-    # 2 Camiones
-    grupo_vehiculos.add(Camion(id="C1-IA-2", jugador_id=2, pos_inicial=(42, 44), posicion_base=base_jugador_2))
-    grupo_vehiculos.add(Camion(id="C2-IA-2", jugador_id=2, pos_inicial=(42, 43), posicion_base=base_jugador_2))
-    # 3 Autos
-    grupo_vehiculos.add(Auto(id="A1-IA-2", jugador_id=2, pos_inicial=(41, 44), posicion_base=base_jugador_2))
-    grupo_vehiculos.add(Auto(id="A2-IA-2", jugador_id=2, pos_inicial=(41, 43), posicion_base=base_jugador_2))
-    grupo_vehiculos.add(Auto(id="A3-IA-2", jugador_id=2, pos_inicial=(41, 42), posicion_base=base_jugador_2))
-  
+   
     print(f"Simulación inicializada con {len(grupo_vehiculos)} vehículos.")
 
 def chequear_colisiones_vehiculos(grupo_vehiculos):
@@ -198,7 +167,7 @@ def chequear_colisiones_vehiculos(grupo_vehiculos):
     
     # Eliminar todos los vehículos que colisionaron
     for vehiculo in vehiculos_a_eliminar:
-        vehiculo.kill() # .kill() los elimina de CUALQUIER grupo al que pertenezcan
+        vehiculo.destruir() # .kill() los elimina de CUALQUIER grupo al que pertenezcan
 
 def cargar_datos_replay(path="replay.csv"):
     datos = {}
@@ -260,11 +229,12 @@ while run:
     
     grupo_items.draw(ventana)
     grupo_vehiculos.draw(ventana)
+    grupo_explosiones.draw(ventana)
     for item in grupo_items:
         if hasattr(item, 'draw_radius'):
             item.draw_radius(ventana)
 
-   
+  
 
     # Eventos (cerrar ventana)
     for event in pygame.event.get():
@@ -287,11 +257,14 @@ while run:
 
                         if modo_replay_activado:
                             try:
-                                recorder_file = open("replay.csv", "w")
-                                recorder_file.write("frame,id,x,y\n")
+                                # --- MODIFICADO: Usamos 'replay.csv.gz' ---
+                                # (Asegúrate de importar 'gzip' al inicio de tu main.py)
+                                # import gzip 
+                                recorder_file = gzip.open("replay.csv.gz", "wt", encoding="utf-8")
+                                # Escribimos el encabezado del CSV (no es JSON aquí)
+                                recorder_file.write("frame,id,x,y\n") 
                                 modo_record = True
-                                replay_desde_grabacion = True
-                                print("[DEBUG] Grabación iniciada")
+                                print("[DEBUG] Grabación iniciada en 'replay.csv.gz'")
                             except Exception as e:
                                 print(f"[ERROR] No se pudo iniciar el archivo de replay: {e}")
                                 recorder_file = None
@@ -306,37 +279,52 @@ while run:
                 
                 elif boton_ver_replay.collidepoint(event.pos) and not simulacion_iniciada and simulacion_finalizada and modo_replay_activado:
                     try:
-                        datos_replay = cargar_datos_replay("replay.csv")
+                        datos_replay = cargar_datos_replay("replay.csv.gz") 
                         if datos_replay:
-                            inicializar_replay(datos_replay)
-                            simulacion_iniciada = True
-                            modo_replay = True
-                            frame_actual = 1
-                            print("[DEBUG] Reproducción de Replay iniciada")
+                            if inicializar_replay(datos_replay): # Comprueba si la inicialización fue exitosa
+                                simulacion_iniciada = True
+                                modo_replay = True
+                                frame_actual = min(datos_replay.keys())
+                                max_frame = max(datos_replay.keys())
+                                replay_pausado = True
+                                print(f"[DEBUG] Reproducción de Replay iniciada. Frames: {frame_actual} a {max_frame}")
+                            else:
+                                print("[ERROR] Replay vacío o corrupto, no se puede reproducir.")
                         else:
-                            print("[ERROR] Replay vacío, no se puede reproducir.")
+                            print("[ERROR] No se pudo cargar el replay (vacío).")
                     except Exception as e:
                         print(f"[ERROR] No se pudo cargar el replay: {e}")
             else: # Si la simulación YA está iniciada
                 if boton_play.collidepoint(event.pos):
-                    simulacion_pausada = not simulacion_pausada # Toggle pausa
-                    print(f"Simulación {'pausada' if simulacion_pausada else 'reanudada'}")
+                    if modo_replay:
+                        # En modo replay, 'Play' controla la reproducción automática
+                        replay_pausado = not replay_pausado
+                        print(f"Replay {'pausado' if replay_pausado else 'reanudado'}")
+                    else:
+                        # En simulación normal, controla la pausa del motor
+                        simulacion_pausada = not simulacion_pausada 
+                        print(f"Simulación {'pausada' if simulacion_pausada else 'reanudada'}")
+                if modo_replay: # Estos botones SOLO funcionan en modo replay
+                    if boton_prev.collidepoint(event.pos):
+                        frame_actual = max(0, frame_actual - 1)
+                        print(f"Replay: Viendo frame {frame_actual}")
+
+                    if boton_next.collidepoint(event.pos):
+                        frame_actual = min(frame_actual + 1, max_frame)
+                        print(f"Replay: Viendo frame {frame_actual}")
             if boton_stop.collidepoint(event.pos):
                     print("Simulación detenida y reseteada.")
                     simulacion_iniciada = False
                     simulacion_pausada = False
-                    modo_replay = False # Asegúrate de resetear esto también
+                    simulacion_finalizada = False # Resetea esto también
+                    modo_replay = False
                     modo_record = False
                     if recorder_file:
                         recorder_file.close()
                         recorder_file = None
                     inicializar_simulacion() # Resetea todo
 
-            if boton_prev.collidepoint(event.pos):
-                    print("Botón '<<' (Frame Anterior) presionado. Lógica no implementada.")
-
-            if boton_next.collidepoint(event.pos):
-                    print("Botón '>>' (Frame Siguiente) presionado. Lógica no implementada.")
+            
                                         
     
 
@@ -358,26 +346,49 @@ while run:
 
                 if modo_replay:
                     if frame_actual in datos_replay:
-                        # Limpiar posiciones actuales
-                        for vehiculo in grupo_vehiculos:
-                            vehiculo.posicion.x = -1
-                            vehiculo.posicion.y = -1
-
-                        # Actualizar posiciones desde el frame actual
+                        
+                        # 1. Guardar las nuevas posiciones del frame en un diccionario
+                        posiciones_frame = {}
                         for id, x, y in datos_replay[frame_actual]:
-                            for vehiculo in grupo_vehiculos:
-                                if vehiculo.id == id:
-                                    vehiculo.posicion.x = x
-                                    vehiculo.posicion.y = y
-                                    vehiculo._actualizar_posicion_pixel((x, y), (x, y))  # <- ESTA LÍNEA AGREGA
-                                    break
+                            posiciones_frame[id] = (x, y) # (Tupla)
+
+                        # 2. Iterar sobre los vehículos y actualizarlos
+                        for vehiculo in grupo_vehiculos:
+                            if vehiculo.id in posiciones_frame:
+                                # Guardar la posición ANTERIOR (Vector2)
+                                pos_anterior_vec = vehiculo.posicion.copy()
+                                
+                                # Obtener la posición NUEVA (Tupla)
+                                pos_nueva_tuple = posiciones_frame[vehiculo.id]
+                                
+                                # Llamar a la función de actualización
+                                # (Esta función actualiza self.posicion Y el self.rect)
+                                vehiculo._actualizar_posicion_pixel(pos_nueva_tuple, pos_anterior_vec)
+                            
+                            else:
+                                # Si el vehículo no está en el frame (ej. destruido), 
+                                # moverlo fuera de la pantalla
+                                pos_fuera = -100
+                                vehiculo.posicion.x = pos_fuera
+                                vehiculo.posicion.y = pos_fuera
+                                vehiculo.rect.center = (
+                                    pos_fuera * CONSTANTES.CELDA_ANCHO,
+                                    pos_fuera * CONSTANTES.CELDA_ALTO
+                                )
+
                         frame_actual += 1
+                    
+                    elif simulacion_iniciada:
+                         # Si el replay terminó pero la simulación no (ej. pausada al final)
+                         # O si el frame no está (lo que no debería pasar si se carga bien)
+                         pass
 
                 # 2. Chequear colisiones entre vehículos
                 chequear_colisiones_vehiculos(grupo_vehiculos)
                 
                 # 3. Actualiza los items (para colisiones con minas/recursos)
                 grupo_items.update(grupo_vehiculos, mapa, game_time)
+                grupo_explosiones.update()
                 colisiones_vehiculos = pygame.sprite.groupcollide(grupo_vehiculos, grupo_vehiculos, False, False)
 
                 vehiculos_a_destruir = set()

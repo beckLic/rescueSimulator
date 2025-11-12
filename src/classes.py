@@ -9,6 +9,14 @@ class Vehiculo(pygame.sprite.Sprite):
     Clase base que representa a cualquier vehículo en el simulador.
     Contiene todos los atributos y métodos comunes.
     """ 
+    _img_explosion = None
+    _grupo_explosiones = None
+    
+    @staticmethod
+    def set_assets_explosiones(imagen, grupo):
+        """Guarda los assets de explosión para que la clase los use."""
+        Vehiculo._img_explosion = imagen
+        Vehiculo._grupo_explosiones = grupo
     #CONSTRUCTOR DE LA CLASE
     def __init__(self, id: str, jugador_id: int, pos_inicial: tuple, posicion_base: tuple):
         pygame.sprite.Sprite.__init__(self)
@@ -37,7 +45,11 @@ class Vehiculo(pygame.sprite.Sprite):
         self.tipo = None
         self.tipo_carga_permitida = []
         self.max_viajes = 0
-
+        self.contador_espera = 0  # Cooldown para re-cálculo de ruta
+        self.MAX_ESPERA_FRAMES = 30
+        self.estado_anterior = None # Para recordar qué hacíamos antes de bloquearnos
+        self.contador_espera_bloqueo = 0
+        self.MAX_ESPERA_BLOQUEO = 60
 
     def recolectar(self, recurso, map_manager):
         """
@@ -150,17 +162,22 @@ class Vehiculo(pygame.sprite.Sprite):
         return siguiente_pos_yx, "SEGURO", None
 
     def destruir(self):
-    #Marca el vehículo como destruido y lo elimina."""
+        """Marca el vehículo como destruido y crea una explosión."""
         if self.destruido: # Evitar destrucción múltiple
             return
 
         self.destruido = True
         print(f"¡COLISIÓN! {self.id} ha sido destruido.")
 
-        # Pierde toda la carga que llevaba
+        # Pierde toda la carga
         self.carga_actual.clear() 
-
-        #Añadir aquí una explosión visual
+        
+       
+        if Vehiculo._img_explosion and Vehiculo._grupo_explosiones is not None:
+            # Crear la explosión usando los assets de clase
+            explosion_sprite = Explosion(self.rect.center, Vehiculo._img_explosion)
+            Vehiculo._grupo_explosiones.add(explosion_sprite)
+        
 
         # Elimina el sprite de todos los grupos
         self.kill()
@@ -225,36 +242,55 @@ class Vehiculo(pygame.sprite.Sprite):
             
             # Aplicar regla de desempate por ID
             # El vehículo con el ID "mayor" (alfabéticamente) es el que cede.
+            
             if self.id > vehiculo_bloqueador.id:
                 print(f"{self.id} (cede) recalculando ruta alrededor de {vehiculo_bloqueador.id}")
                 
-                # Lista de obstáculos para el nuevo cálculo de A*
-                obstaculos = [ (vehiculo_bloqueador.posicion.x, vehiculo_bloqueador.posicion.y) ]
+                # Esta es la posición (x,y) del vehículo que nos bloquea
+                obstaculo_xy = (int(vehiculo_bloqueador.posicion.x), int(vehiculo_bloqueador.posicion.y))
+                obstaculos_list = [ obstaculo_xy ]
 
                 # 1. Obtener destino (depende del estado actual)
                 destino_yx = None
                 if self.estado == "buscando" and self.objetivo_actual:
                     destino_yx = (self.objetivo_actual.position[1], self.objetivo_actual.position[0])
                 elif self.estado == "volviendo":
-                    destino_yx = (int(self.posicion_base[1]), int(self.posicion_base[0]))
+                    destino_yx = self.objetivo_actual 
                 
-                # 2. Llamar al nuevo _calcular_camino
+                # 2. Llamar al _calcular_camino (CON LA NUEVA COMPROBACIÓN)
+                nuevo_camino = None
                 if destino_yx:
-                    nuevo_camino = self._calcular_camino(map_manager, destino_yx, obstaculos)
                     
-                    if nuevo_camino:
-                        self.camino_actual = nuevo_camino
-                    else:
-                        # No hay ruta alternativa, nos quedamos quietos
-                        print(f"{self.id} no encontró ruta alternativa. Esperando...")
-                        pass 
-                else:
-                    # No tenía un destino claro, mejor esperar.
-                    pass
-            else:
-                print(f"{self.id} (espera) tiene prioridad sobre {vehiculo_bloqueador.id}")
-                pass # Esperamos a que el otro vehículo (con id >) se mueva
+                    
+                    # Convertimos el destino (y,x) a (x,y) para comparar
+                    destino_xy = (destino_yx[1], destino_yx[0])
 
+                    if destino_xy == obstaculo_xy:
+                        #  No podemos recalcular si el bloqueador ESTÁ en el destino.
+                        print(f"{self.id} no puede recalcular: el bloqueador está en el destino. Esperando...")
+                        nuevo_camino = None # Forzamos el fallo para entrar en modo "bloqueado"
+                    else:
+                        # Es seguro recalcular
+                        nuevo_camino = self._calcular_camino(map_manager, destino_yx, obstaculos_list)
+                    
+
+                # 3. --- Lógica de "bloqueado" ---
+                # (Esta parte es la misma que antes, pero ahora también
+                # atrapa el caso 'destino_xy == obstaculo_xy')
+                if nuevo_camino:
+                    self.camino_actual = nuevo_camino
+                else:
+                    # NO hay ruta alternativa O no hay destino, entramos en modo "bloqueado"
+                    print(f"{self.id} no encontró ruta alternativa. Entrando en modo 'bloqueado'...")
+                    self.estado_anterior = self.estado # Guardar estado ('buscando' o 'volviendo')
+                    self.estado = "bloqueado"
+                    self.contador_espera_bloqueo = self.MAX_ESPERA_BLOQUEO
+                    return # Salir de la función
+            
+            else:
+                # Tenemos prioridad, esperamos
+                print(f"{self.id} (espera) tiene prioridad sobre {vehiculo_bloqueador.id}")
+                pass
     def _actualizar_posicion_pixel(self, nueva_pos_grid: tuple, pos_anterior_grid: pygame.math.Vector2):
         """
         Actualiza el self.rect (píxeles) y la dirección de la imagen
@@ -327,7 +363,15 @@ class Vehiculo(pygame.sprite.Sprite):
                 else:
                     print(f"{self.id} no encontró camino a {self.objetivo_actual.position}")
                     self.objetivo_actual = None
-            
+        # =======================================================
+        # ESTADO 1.5: BLOQUEADO (Esperando a que se mueva otro)
+        # =======================================================
+        elif self.estado == "bloqueado":
+            self.contador_espera_bloqueo -= 1
+            if self.contador_espera_bloqueo <= 0:
+                print(f"{self.id} reintenta moverse (fin de bloqueo).")
+                self.estado = self.estado_anterior # Volver a 'buscando' o 'volviendo'
+                self.estado_anterior = None    
         # =======================================================
         # ESTADO 2: BUSCANDO (Yendo hacia un recurso)
         # =======================================================
@@ -351,11 +395,23 @@ class Vehiculo(pygame.sprite.Sprite):
             
             # Paso 1: Calcular el camino a la base (SOLO SI NO LO TIENE)
             if not self.camino_actual:
-                pos_base_yx = (int(self.posicion_base[1]), int(self.posicion_base[0]))
                 
+                
+                
+                # A. Comprobar si estamos en espera
+                if self.contador_espera > 0:
+                    self.contador_espera -= 1 # Restamos 1 al contador
+                    return # Salimos de 'actualizar' por este frame
+                
+                # B. Si no estamos en espera (contador == 0), intentar calcular
+                pos_base_yx = (int(self.posicion_base[1]), int(self.posicion_base[0]))
+                self.objetivo_actual = pos_base_yx
                 self.camino_actual = self._calcular_camino(map_manager, pos_base_yx)
+                
+                # C. Si el cálculo FALLA de nuevo
                 if not self.camino_actual:
-                    print(f"{self.id} NO encuentra camino a la base. Esperando...")
+                    print(f"{self.id} NO encuentra camino a la base. Reintentando en {self.MAX_ESPERA_FRAMES} frames...")
+                    self.contador_espera = self.MAX_ESPERA_FRAMES # Reiniciar el cooldown
                     return
             
             # Paso 2: (MODIFICADO) Llamar al helper de movimiento
@@ -455,6 +511,7 @@ class Camion(Vehiculo):
         self.rect = self.image.get_rect(center=(pixel_x, pixel_y))
 #-------------------------------------------------------------------------------------------------------------
 class Auto(Vehiculo):
+
     """
     Representa un vehículo tipo Auto.
     - Puede recoger Personas y cargas.
@@ -484,6 +541,28 @@ class Auto(Vehiculo):
         pixel_x = pos_inicial[0] * CONSTANTES.CELDA_ANCHO + (CONSTANTES.CELDA_ANCHO / 2)
         pixel_y = pos_inicial[1] * CONSTANTES.CELDA_ALTO + (CONSTANTES.CELDA_ALTO / 2)
         self.rect = self.image.get_rect(center=(pixel_x, pixel_y))
+
+class Explosion(pygame.sprite.Sprite):
+    """
+    Un sprite simple que muestra una imagen de explosión
+    y se autodestruye después de unos pocos frames.
+    """
+    def __init__(self, center_pos, explosion_image):
+        super().__init__()
+        self.image = explosion_image
+        self.rect = self.image.get_rect(center=center_pos)
+        
+        
+        self.ttl = 6 
+
+    def update(self, *args, **kwargs):
+        """
+        Actualiza el tiempo de vida de la explosión.
+        """
+        self.ttl -= 1
+        if self.ttl <= 0:
+            self.kill()
+
 #---------------------------------------------------------------------------------------------------------
 #CLASES DE RECURSOS
 
