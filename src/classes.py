@@ -25,6 +25,7 @@ class Vehiculo(pygame.sprite.Sprite):
         self.direccion = "derecha"
         self.objetivo_actual = None
         self.camino_actual = []
+        self.destruido = False
         self.velocidad = 3 # Píxeles por fotograma
         self.estado = "inactivo"  # Posibles estados: inactivo, buscando, volviendo
         
@@ -148,7 +149,21 @@ class Vehiculo(pygame.sprite.Sprite):
         # 3. Si no hay peligros
         return siguiente_pos_yx, "SEGURO", None
 
+    def destruir(self):
+    #Marca el vehículo como destruido y lo elimina."""
+        if self.destruido: # Evitar destrucción múltiple
+            return
 
+        self.destruido = True
+        print(f"¡COLISIÓN! {self.id} ha sido destruido.")
+
+        # Pierde toda la carga que llevaba
+        self.carga_actual.clear() 
+
+        #Añadir aquí una explosión visual
+
+        # Elimina el sprite de todos los grupos
+        self.kill()
     def _resolver_siguiente_paso(self, map_manager, grupo_vehiculos):
         """
         Helper que contiene la lógica de movimiento, evasión y recálculo.
@@ -284,10 +299,12 @@ class Vehiculo(pygame.sprite.Sprite):
         centro = self.rect.center
         self.rect = self.image.get_rect(center=centro)
     def update(self, map_manager, game_time, grupo_vehiculos=None):
-        """
-        (MODIFICADO) La lógica principal del vehículo, ahora usa el helper _resolver_siguiente_paso
-        """
         
+        # =======================================================
+        # ESTADO 0: DESTRUIDO (eliminado)
+        # =======================================================
+        if self.destruido:
+            return
         # =======================================================
         # ESTADO 1: INACTIVO (Buscando qué hacer)
         # =======================================================
