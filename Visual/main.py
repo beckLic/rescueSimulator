@@ -125,10 +125,7 @@ def dibujar_pantalla_final():
     rect_ganador = ganador.get_rect(centerx=CONSTANTES.VENTANA_ANCHO_TOTAL / 2, y=CONSTANTES.ALTO_VENTANA - 150)
     ventana.blit(ganador, rect_ganador)
     
-    # 4. Instrucción de reinicio (en el panel de UI)
-    instruccion = fuente_stats.render("Presiona 'Init' para reiniciar", True, (255, 255, 255))
-    rect_instruccion = instruccion.get_rect(centerx=CONSTANTES.VENTANA_ANCHO_TOTAL / 2, y=CONSTANTES.MAPA_ALTO + 50)
-    ventana.blit(instruccion, rect_instruccion)
+    
 
 
 def dibujar_controles(finalizada):
@@ -229,10 +226,10 @@ while run:
     reloj.tick(10)#FPS
     game_time += 1
     
-    # (MODIFICADO) Lógica de dibujado
+    # Lógica de dibujado
     if simulacion_finalizada:
         # --- PANTALLA FINAL ---
-        # El fondo de la simulación (detrás de la superposición)
+        # 1. Fondo de la simulación (detrás de la superposición)
         ventana.fill(CONSTANTES.COLOR_NEGRO)
         color_panel_ui = (30, 30, 30)
         pygame.draw.rect(ventana, color_panel_ui, (0, CONSTANTES.MAPA_ALTO, CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.UI_ALTO))
@@ -240,36 +237,42 @@ while run:
         grupo_items.draw(ventana)
         grupo_vehiculos.draw(ventana)
         
-        # Superponer la pantalla de estadísticas
+        # 2. Superponer la pantalla de estadísticas
         dibujar_pantalla_final() 
         
     else:
         # --- SIMULACIÓN ACTIVA O EN PAUSA ---
+        # 1. Fondo
         ventana.fill(CONSTANTES.COLOR_NEGRO)
         color_panel_ui = (30, 30, 30)
         pygame.draw.rect(ventana, color_panel_ui, (0, CONSTANTES.MAPA_ALTO, CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.UI_ALTO))
         dibujar_grid()
         
+        # 2. Sprites
         grupo_items.draw(ventana)
         grupo_vehiculos.draw(ventana)
         for item in grupo_items:
             if hasattr(item, 'draw_radius'):
                 item.draw_radius(ventana)
         
-        # Dibujar HUD (Puntajes)
+        # 3. HUD (Puntajes)
         texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255))
         texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100))
         pygame.draw.rect(ventana, (0,0,0), (345, CONSTANTES.MAPA_ALTO + 20, 250, 65))
         ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
         ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
         
-        # Dibujar Controles (Botones)
-        fuente_botones = pygame.font.SysFont(None, 24)
-        pygame.draw.rect(ventana, (0, 200, 0), boton_init)
-        ventana.blit(fuente_botones.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
+        # 4. Botón "Play" (Solo si no ha empezado y no ha terminado)
         if not simulacion_iniciada:
+             fuente_botones = pygame.font.SysFont(None, 24)
              pygame.draw.rect(ventana, (0, 0, 200), boton_play)
              ventana.blit(fuente_botones.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
+
+
+    # --- Botón "Init" (Reset) - (Se dibuja SIEMPRE) ---
+    fuente_botones = pygame.font.SysFont(None, 24)
+    pygame.draw.rect(ventana, (0, 200, 0), boton_init)
+    ventana.blit(fuente_botones.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
 
 
     # --- Eventos (Se manejan siempre) ---
@@ -296,10 +299,31 @@ while run:
         grupo_items.update(grupo_vehiculos, mapa, game_time)
         
         # 4. Chequear fin de juego
+        # ... (Tu lógica de fin de juego que ya tienes) ...
+        fin_juego = False
         if not mapa.resources or not grupo_vehiculos:
+            fin_juego = True
+            print(f"¡Simulación finalizada! (Causa: Sin recursos o sin vehículos)")
+        else:
+            personas_restantes = False
+            for recurso in mapa.resources:
+                if recurso.type == "Personas":
+                    personas_restantes = True
+                    break
+            if not personas_restantes:
+                otros_vehiculos_activos = False
+                for vehiculo in grupo_vehiculos.sprites():
+                    if vehiculo.tipo != "moto":
+                        otros_vehiculos_activos = True
+                        break
+                if not otros_vehiculos_activos:
+                    fin_juego = True
+                    print(f"¡Simulación finalizada! (Causa: Solo quedan Motos y no hay Personas)")
+        
+        if fin_juego:
             simulacion_iniciada = False
             simulacion_finalizada = True
-            print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
+            print(f"Estadísticas finales: Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
 
     pygame.display.update()
 
