@@ -8,6 +8,7 @@ from src.classes import load_resource_config,Vehiculo, Jeep, Moto, Camion, Auto,
 import csv
 import os
 import gzip
+import random
 pygame.init()
 fuente_hud = pygame.font.SysFont("Arial", 30)
 ventana = pygame.display.set_mode((CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.VENTANA_ALTO_TOTAL))
@@ -24,7 +25,11 @@ modo_replay = False
 modo_record = False
 recorder_file = None
 replay_desde_grabacion = False
-
+datos_replay = {}
+frame_actual = 0
+max_frame = 0
+replay_pausado = False
+semilla_actual = None
 minaLineal=pygame.image.load("imagenes/minaLineal.png") # Corregí la barra \
 minaMovil=pygame.image.load("imagenes/minaMovil.png")
 img_explosion = pygame.image.load("imagenes/explosion.png").convert_alpha()
@@ -122,11 +127,20 @@ def dibujar_controles(finalizada):
     pygame.draw.rect(ventana, (0, 100, 200), boton_next)
     texto_next = fuente_botones.render(">>", True, (255, 255, 255))
     ventana.blit(texto_next, (boton_next.x + 10, boton_next.y + 10))# --- Función para (re)iniciar la simulación ---
-def inicializar_simulacion():
-    global game_time, simulacion_finalizada, grupo_vehiculos, engine
+def inicializar_simulacion(semilla=None):
+    global game_time, simulacion_finalizada, grupo_vehiculos, engine,semilla_actual
+    if semilla is None:
+        semilla_actual = random.randint(0, 999999) # Crea una nueva semilla
+        print(f"Generando NUEVA simulación con semilla: {semilla_actual}")
+    else:
+        semilla_actual = semilla # Reutiliza la semilla anterior
+        print(f"Cargando simulación con semilla: {semilla_actual}")
+    
+    random.seed(semilla_actual)
     game_time = 0
     simulacion_finalizada = False
     print("Iniciando simulación...")
+    
     mapa.puntaje_j1 = 0
     mapa.puntaje_j2 = 0
     # 1. Limpiar grupos
@@ -172,16 +186,22 @@ def chequear_colisiones_vehiculos(grupo_vehiculos):
 def cargar_datos_replay(path="replay.csv"):
     datos = {}
     try:
-        with open(path, newline='') as archivo:
+        with gzip.open(path, "rt", encoding="utf-8", newline='') as archivo:
             lector = csv.DictReader(archivo)
             for fila in lector:
                 frame = int(fila["frame"])
+                if frame not in datos:
+                    datos[frame] = {'vehiculos': [], 'score': (0, 0)}
                 id_vehiculo = fila["id"]
+                jugador_id = int(fila["jugador"])
                 x = int(fila["x"])
                 y = int(fila["y"])
                 if frame not in datos:
                     datos[frame] = []
-                datos[frame].append((id_vehiculo, x, y))
+                datos[frame]['vehiculos'].append((id_vehiculo, jugador_id, x, y))
+                score_j1 = int(fila["score_j1"])
+                score_j2 = int(fila["score_j2"])
+                datos[frame]['score'] = (score_j1, score_j2)
         print(f"[DEBUG] Replay cargado con {len(datos)} frames.")
     except Exception as e:
         print(f"[ERROR] al leer replay.csv: {e}")
@@ -189,6 +209,7 @@ def cargar_datos_replay(path="replay.csv"):
     return datos
 
 def inicializar_replay(datos_replay):
+    inicializar_simulacion(semilla=semilla_actual) 
     grupo_vehiculos.empty()
     
     if not datos_replay:
@@ -197,15 +218,15 @@ def inicializar_replay(datos_replay):
 
     frame_inicial = min(datos_replay.keys())
 
-    for id_vehiculo, x, y in datos_replay[frame_inicial]:
+    for id_vehiculo, jugador_id, x, y in datos_replay[frame_inicial]['vehiculos']:
         if id_vehiculo.startswith("J"):
-            v = Jeep(id=id_vehiculo, jugador_id=1 if "1" in id_vehiculo else 2, pos_inicial=(x, y), posicion_base=(x, y))
+            v = Jeep(id=id_vehiculo, jugador_id=jugador_id, pos_inicial=(x, y), posicion_base=(x, y))
         elif id_vehiculo.startswith("M"):
-            v = Moto(id=id_vehiculo, jugador_id=1 if "1" in id_vehiculo else 2, pos_inicial=(x, y), posicion_base=(x, y))
+            v = Moto(id=id_vehiculo, jugador_id=jugador_id, pos_inicial=(x, y), posicion_base=(x, y))
         elif id_vehiculo.startswith("C"):
-            v = Camion(id=id_vehiculo, jugador_id=1 if "1" in id_vehiculo else 2, pos_inicial=(x, y), posicion_base=(x, y))
+            v = Camion(id=id_vehiculo, jugador_id=jugador_id, pos_inicial=(x, y), posicion_base=(x, y))
         elif id_vehiculo.startswith("A"):
-            v = Auto(id=id_vehiculo, jugador_id=1 if "1" in id_vehiculo else 2, pos_inicial=(x, y), posicion_base=(x, y))
+            v = Auto(id=id_vehiculo, jugador_id=jugador_id, pos_inicial=(x, y), posicion_base=(x, y))
         else:
             continue
         grupo_vehiculos.add(v)
@@ -284,8 +305,8 @@ while run:
                                 # (Asegúrate de importar 'gzip' al inicio de tu main.py)
                                 # import gzip 
                                 recorder_file = gzip.open("replay.csv.gz", "wt", encoding="utf-8")
-                                # Escribimos el encabezado del CSV (no es JSON aquí)
-                                recorder_file.write("frame,id,x,y\n") 
+                                # Escribimos el encabezado del CSV 
+                                recorder_file.write("frame,id,jugador,x,y,score_j1,score_j2\n")
                                 modo_record = True
                                 print("[DEBUG] Grabación iniciada en 'replay.csv.gz'")
                             except Exception as e:
@@ -355,100 +376,119 @@ while run:
     
     # --- Lógica de Simulación ---
     if simulacion_iniciada:
-            if not simulacion_pausada:
-                game_time += 1
-                # 1. Actualiza la IA de los vehículos
-                grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
+        
+        # --- (CAMBIO) Lógica de REPLAY ---
+        # Esta lógica AHORA está separada de la simulación en vivo.
+        if modo_replay:
+            
+            # 1. Aplicar el estado del frame actual (SIEMPRE)
+            #    Esto hace que '<<' y '>>' funcionen al instante, 
+            #    incluso si 'replay_pausado' es True.
+            if frame_actual in datos_replay:
+                score_j1, score_j2 = datos_replay[frame_actual]['score']
+                mapa.puntaje_j1 = score_j1
+                mapa.puntaje_j2 = score_j2
+                # Guardar las posiciones del frame
+                posiciones_frame = {}
+                for id, _, x, y in datos_replay[frame_actual]['vehiculos']: 
+                    posiciones_frame[id] = (x, y) # (Tupla)
 
-                # Guardar frame actual si está activado el modo_record
-                if modo_record and recorder_file:
-                    for vehiculo in grupo_vehiculos:
-                        x = int(vehiculo.posicion.x)
-                        y = int(vehiculo.posicion.y)
-                        recorder_file.write(f"{game_time},{vehiculo.id},{x},{y}\n")
-
-                if modo_replay:
-                    if frame_actual in datos_replay:
+                # Iterar sobre los vehículos y actualizarlos
+                for vehiculo in grupo_vehiculos:
+                    if vehiculo.id in posiciones_frame:
+                        # Guardar la posición ANTERIOR (Vector2)
+                        pos_anterior_vec = vehiculo.posicion.copy()
                         
-                        # 1. Guardar las nuevas posiciones del frame en un diccionario
-                        posiciones_frame = {}
-                        for id, x, y in datos_replay[frame_actual]:
-                            posiciones_frame[id] = (x, y) # (Tupla)
-
-                        # 2. Iterar sobre los vehículos y actualizarlos
-                        for vehiculo in grupo_vehiculos:
-                            if vehiculo.id in posiciones_frame:
-                                # Guardar la posición ANTERIOR (Vector2)
-                                pos_anterior_vec = vehiculo.posicion.copy()
-                                
-                                # Obtener la posición NUEVA (Tupla)
-                                pos_nueva_tuple = posiciones_frame[vehiculo.id]
-                                
-                                # Llamar a la función de actualización
-                                # (Esta función actualiza self.posicion Y el self.rect)
-                                vehiculo._actualizar_posicion_pixel(pos_nueva_tuple, pos_anterior_vec)
-                            
-                            else:
-                                # Si el vehículo no está en el frame (ej. destruido), 
-                                # moverlo fuera de la pantalla
-                                pos_fuera = -100
-                                vehiculo.posicion.x = pos_fuera
-                                vehiculo.posicion.y = pos_fuera
-                                vehiculo.rect.center = (
-                                    pos_fuera * CONSTANTES.CELDA_ANCHO,
-                                    pos_fuera * CONSTANTES.CELDA_ALTO
-                                )
-
-                        frame_actual += 1
+                        # Obtener la posición NUEVA (Tupla)
+                        pos_nueva_tuple = posiciones_frame[vehiculo.id]
+                        
+                        # Llamar a la función de actualización
+                        vehiculo._actualizar_posicion_pixel(pos_nueva_tuple, pos_anterior_vec)
                     
-                    elif simulacion_iniciada:
-                         # Si el replay terminó pero la simulación no (ej. pausada al final)
-                         # O si el frame no está (lo que no debería pasar si se carga bien)
-                         pass
+                    else:
+                        # Si el vehículo no está en el frame (ej. destruido), 
+                        # moverlo fuera de la pantalla (como en tu código original)
+                        pos_fuera = -100
+                        vehiculo.posicion.x = pos_fuera
+                        vehiculo.posicion.y = pos_fuera
+                        vehiculo.rect.center = (
+                            pos_fuera * CONSTANTES.CELDA_ANCHO,
+                            pos_fuera * CONSTANTES.CELDA_ALTO
+                        )
 
-                # 2. Chequear colisiones entre vehículos
-                chequear_colisiones_vehiculos(grupo_vehiculos)
+            # 2. Avanzar el frame SÓLO SI no está pausado
+            if not replay_pausado:
+                frame_actual += 1
+            
+            # 3. (NUEVO) Chequear fin del replay
+            if frame_actual > max_frame and max_frame > 0:
+                frame_actual = max_frame # Asegura que no se pase
+                replay_pausado = True
+                simulacion_finalizada = True
+                simulacion_iniciada = False # Detiene la lógica
+                # (CAMBIO) NO salimos de modo_replay aquí, 
+                # para que el HUD siga mostrando "REPLAY FINALIZADO"
+                # modo_replay = False 
                 
-                # 3. Actualiza los items (para colisiones con minas/recursos)
-                grupo_items.update(grupo_vehiculos, mapa, game_time)
-                grupo_explosiones.update()
-                colisiones_vehiculos = pygame.sprite.groupcollide(grupo_vehiculos, grupo_vehiculos, False, False)
+                # (NUEVO) Aplicar el puntaje final una última vez
+                if max_frame in datos_replay:
+                    mapa.puntaje_j1, mapa.puntaje_j2 = datos_replay[max_frame]['score']
 
-                vehiculos_a_destruir = set()
+                print("Replay finalizado.")
 
-                for v1, lista_colisiones in colisiones_vehiculos.items():
-                    for v2 in lista_colisiones:
-                        # Evitar colisión consigo mismo
-                        if v1 != v2: 
-                            # Registrar ambos para destrucción
-                            vehiculos_a_destruir.add(v1)
-                            vehiculos_a_destruir.add(v2)
+        # --- (CAMBIO) Lógica de SIMULACIÓN EN VIVO ---
+        # Se usa 'elif' para que NO se ejecute si estamos en modo_replay
+        elif not simulacion_pausada:
+            game_time += 1
+            
+            # 1. Actualiza la IA de los vehículos
+            grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
 
-                # Destruir vehículos (fuera del bucle de detección)
-                for v in vehiculos_a_destruir:
-                    if not v.destruido:
-                        v.destruir()
-                        # (Aquí es donde mostrarías la imagen de explosión)
-                        # p.ej: explosion_sprite = Explosion(v.rect.center, img_explosion)
-                        #      grupo_explosiones.add(explosion_sprite)
-                # 4.Chequear condiciones de fin de juego
-                # Un grupo de sprites vacío evalúa como False
-                if not mapa.resources or not grupo_vehiculos:
-                    simulacion_iniciada = False
-                    simulacion_finalizada = True
-                    print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
-                    if recorder_file:
-                        if replay_desde_grabacion:
-                            if os.path.exists("replay.csv"):
-                                with open("replay.csv", "r") as f:
-                                    lines = f.readlines()
-                                if len(lines) <= 1:
-                                    os.remove("replay.csv")
-                                    print("[DEBUG] Replay vacío eliminado.")
-                            recorder_file.close()
-                            print("[DEBUG] Archivo replay.csv guardado y cerrado.")
-                        recorder_file = None
-                        modo_record = False
+            # Guardar frame actual si está activado el modo_record
+            if modo_record and recorder_file:
+                for vehiculo in grupo_vehiculos:
+                    x = int(vehiculo.posicion.x)
+                    y = int(vehiculo.posicion.y)
+                    recorder_file.write(f"{game_time},{vehiculo.id},{vehiculo.jugador_id},{x},{y},{mapa.puntaje_j1},{mapa.puntaje_j2}\n")
+
+            # (El bloque 'if modo_replay' que estaba aquí fue movido arriba)
+
+            # 2. Chequear colisiones entre vehículos
+            chequear_colisiones_vehiculos(grupo_vehiculos)
+            
+            # 3. Actualiza los items (para colisiones con minas/recursos)
+            grupo_items.update(grupo_vehiculos, mapa, game_time)
+            grupo_explosiones.update()
+            
+            # 4. Lógica de colisión (la mantengo como la tenías)
+            colisiones_vehiculos = pygame.sprite.groupcollide(grupo_vehiculos, grupo_vehiculos, False, False)
+            vehiculos_a_destruir = set()
+            for v1, lista_colisiones in colisiones_vehiculos.items():
+                for v2 in lista_colisiones:
+                    if v1 != v2: 
+                        vehiculos_a_destruir.add(v1)
+                        vehiculos_a_destruir.add(v2)
+            for v in vehiculos_a_destruir:
+                if not v.destruido:
+                    v.destruir()
+
+            # 5.Chequear condiciones de fin de juego
+            if not mapa.resources or not grupo_vehiculos:
+                simulacion_iniciada = False
+                simulacion_finalizada = True
+                print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
+                if recorder_file:
+                    if replay_desde_grabacion:
+                        if os.path.exists("replay.csv"):
+                            with open("replay.csv", "r") as f:
+                                lines = f.readlines()
+                            if len(lines) <= 1:
+                                os.remove("replay.csv")
+                                print("[DEBUG] Replay vacío eliminado.")
+                    recorder_file.close()
+                    print("[DEBUG] Archivo replay.csv guardado y cerrado.")
+                    recorder_file = None
+                    modo_record = False
 
             
     # Archivo: Visual/main.py
