@@ -12,6 +12,7 @@ import random
 
 pygame.init()
 fuente_hud = pygame.font.SysFont("Arial", 30)
+fuente_stats = pygame.font.SysFont("Arial", 22)
 ventana = pygame.display.set_mode((CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.VENTANA_ALTO_TOTAL))
 
 RUTA_CONFIG = "config/default_config.json"
@@ -59,9 +60,9 @@ mapa._colocar_recursos(grupo_items)
 # Fila superior
 boton_init   = pygame.Rect(50,  CONSTANTES.MAPA_ALTO + 5, 120, 40)
 boton_play   = pygame.Rect(190, CONSTANTES.MAPA_ALTO + 5, 120, 40)
-boton_stop = pygame.Rect(1000, CONSTANTES.MAPA_ALTO + 55, 100, 40) 
-boton_prev = pygame.Rect(900, CONSTANTES.MAPA_ALTO + 55, 40, 40)  # "<<"
-boton_next = pygame.Rect(950, CONSTANTES.MAPA_ALTO + 55, 40, 40)  # ">>"
+boton_stop = pygame.Rect(1130, CONSTANTES.MAPA_ALTO + 55, 100, 40) 
+boton_prev = pygame.Rect(1030, CONSTANTES.MAPA_ALTO + 55, 40, 40)  # "<<"
+boton_next = pygame.Rect(1080, CONSTANTES.MAPA_ALTO + 55, 40, 40)  # ">>"
 # Fila inferior
 boton_replay = pygame.Rect(50, CONSTANTES.MAPA_ALTO + 55, 260, 40)  # Más ancho para texto largo
 modo_replay_activado = False  # ← NUEVA variable global para toggle
@@ -487,7 +488,8 @@ while run:
             if grupo_vehiculos: # Solo si hay vehículos vivos
                 todos_inactivos = True
                 for v in grupo_vehiculos:
-                    if v.estado != "inactivo":
+                    # (CAMBIO) Ahora comprueba si no está inactivo O bloqueado
+                    if v.estado not in ["inactivo", "bloqueado"]:
                         todos_inactivos = False
                         break
 
@@ -554,6 +556,45 @@ while run:
 
     # --- (NUEVO) Dibujar Ganador (lado derecho) ---
     if simulacion_finalizada:
+        # --- 1. Cálculo de Estadísticas ---
+        survivors_j1 = 0
+        survivors_j2 = 0
+        for v in grupo_vehiculos:
+            if v.jugador_id == 1:
+                survivors_j1 += 1
+            else:
+                survivors_j2 += 1
+        
+        # Asumiendo 10 vehículos iniciales por equipo (de game_engine.py)
+        destroyed_j1 = 10 - survivors_j1
+        destroyed_j2 = 10 - survivors_j2
+
+        total_recursos_j1 = sum(mapa.recursos_j1.values())
+        total_recursos_j2 = sum(mapa.recursos_j2.values())
+        
+        # --- 2. Dibujar Estadísticas (en 2 columnas) ---
+        color_j1 = (100, 150, 255)
+        color_j2 = (255, 100, 100)
+        
+        # Textos Equipo Azul (J1)
+        stats_j1_vehiculos = fuente_stats.render(f"Vehículos perdidos: {destroyed_j1}", True, color_j1)
+        stats_j1_recursos = fuente_stats.render(f"Recursos totales: {total_recursos_j1}", True, color_j1)
+        
+        # Textos Equipo Rojo (J2)
+        stats_j2_vehiculos = fuente_stats.render(f"Vehículos perdidos: {destroyed_j2}", True, color_j2)
+        stats_j2_recursos = fuente_stats.render(f"Recursos totales: {total_recursos_j2}", True, color_j2)
+
+        
+        stats_col_1_x = 600 # Columna 1 (Azul)
+        stats_col_2_x = 800 # Columna 2 (Rojo)
+        stats_y_1 = CONSTANTES.MAPA_ALTO + 25 # Fila 1 (Vehículos)
+        stats_y_2 = CONSTANTES.MAPA_ALTO + 55 # Fila 2 (Recursos)
+
+        ventana.blit(stats_j1_vehiculos, (stats_col_1_x, stats_y_1))
+        ventana.blit(stats_j1_recursos, (stats_col_1_x, stats_y_2))
+        
+        ventana.blit(stats_j2_vehiculos, (stats_col_2_x, stats_y_1))
+        ventana.blit(stats_j2_recursos, (stats_col_2_x, stats_y_2))
         texto_str = ""
         color_texto = (255, 255, 255) # Blanco por defecto
         
