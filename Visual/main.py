@@ -9,6 +9,7 @@ import csv
 import os
 import gzip
 import random
+
 pygame.init()
 fuente_hud = pygame.font.SysFont("Arial", 30)
 ventana = pygame.display.set_mode((CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.VENTANA_ALTO_TOTAL))
@@ -30,6 +31,7 @@ frame_actual = 0
 max_frame = 0
 replay_pausado = False
 semilla_actual = None
+frames_todos_inactivos = 0
 minaLineal=pygame.image.load("imagenes/minaLineal.png") # Corregí la barra \
 minaMovil=pygame.image.load("imagenes/minaMovil.png")
 img_explosion = pygame.image.load("imagenes/explosion.png").convert_alpha()
@@ -482,10 +484,42 @@ while run:
                     v.destruir()
 
             # 5.Chequear condiciones de fin de juego
-            if not mapa.resources or not grupo_vehiculos:
+            if grupo_vehiculos: # Solo si hay vehículos vivos
+                todos_inactivos = True
+                for v in grupo_vehiculos:
+                    if v.estado != "inactivo":
+                        todos_inactivos = False
+                        break
+
+                if todos_inactivos:
+                    frames_todos_inactivos += 1
+                else:
+                    frames_todos_inactivos = 0 # Alguien se movió, resetea
+            else:
+                frames_todos_inactivos = 0 # No hay vehículos, no aplica
+
+
+            # Condición 1: No quedan recursos
+            if not mapa.resources:
                 simulacion_iniciada = False
                 simulacion_finalizada = True
-                print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
+                print(f"¡Simulación finalizada! Recursos recolectados.")
+
+            # Condición 2: No quedan vehículos
+            elif not grupo_vehiculos:
+                simulacion_iniciada = False
+                simulacion_finalizada = True
+                print(f"¡Simulación finalizada! Vehículos destruidos.")
+
+            # Condición 3 (NUEVA): Todos inactivos por más de 10 frames
+            elif frames_todos_inactivos > 10: # (10 frames = 1 segundo en tu sim)
+                simulacion_iniciada = False
+                simulacion_finalizada = True
+                print(f"¡Simulación finalizada! No hay más movimientos/viajes posibles.")
+
+
+            # Si el juego terminó, cerrar el archivo de replay
+            if simulacion_finalizada and modo_record:
                 if recorder_file:
                     if replay_desde_grabacion:
                         if os.path.exists("replay.csv"):

@@ -356,14 +356,30 @@ class Vehiculo(pygame.sprite.Sprite):
             self.objetivo_actual = self._encontrar_mejor_objetivo(map_manager)
 
             if self.objetivo_actual:
+                pos_objetivo_xy = self.objetivo_actual.position
+                pos_actual_xy = (int(self.posicion.x), int(self.posicion.y))
+
+                    # --- (NUEVO FIX) ---
+                    # ¿Qué pasa si ya estamos EN el objetivo?
+                if pos_actual_xy == pos_objetivo_xy:
+                    print(f"{self.id} ya está en {pos_objetivo_xy}. Recolectando inmediatamente...")
+                    # Forzamos la lógica de recolección aquí mismo
+                    self.recolectar(self.objetivo_actual, map_manager)
+                    self.objetivo_actual = None
+                    if self.viajes_realizados >= self.max_viajes:
+                     self.estado = "volviendo"
+                    else:
+                        self.estado = "inactivo" # Queda inactivo, pero el recurso ya no está
+
+                    return # Salir del update de este frame
+                 
+
+                 # Paso 2: Calcular la Ruta (SOLO si no estábamos ya)
+                
                 print(f"{self.id} decidió ir a por {self.objetivo_actual.type} en {self.objetivo_actual.position}")
-                
-                # Paso 2: Calcular la Ruta hacia el objetivo
                 pos_objetivo_yx = (self.objetivo_actual.position[1], self.objetivo_actual.position[0])
-                
-                # (MODIFICADO) Llama al _calcular_camino estándar (sin obstáculos)
+
                 self.camino_actual = self._calcular_camino(map_manager, pos_objetivo_yx)
-                
                 # Paso 3: Transición de Estado
                 if self.camino_actual:
                     self.estado = "buscando" 
