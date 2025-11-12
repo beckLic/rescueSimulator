@@ -59,7 +59,7 @@ boton_next = pygame.Rect(950, CONSTANTES.MAPA_ALTO + 55, 40, 40)  # ">>"
 boton_replay = pygame.Rect(50, CONSTANTES.MAPA_ALTO + 55, 260, 40)  # Más ancho para texto largo
 modo_replay_activado = False  # ← NUEVA variable global para toggle
 boton_ver_replay = pygame.Rect(620, CONSTANTES.MAPA_ALTO + 5, 140, 40)
-
+frame_step_live = False
 
 def dibujar_controles(finalizada):
     """
@@ -212,6 +212,28 @@ def inicializar_replay(datos_replay):
 
     return True  # <- Indica que sí se pudo cargar correctamente
 
+
+def dibujar_bases(surface, vehiculos):
+    """
+    Dibuja un cuadrado blanco en la celda base de cada vehículo.
+    """
+    COLOR_BASE = (255, 255, 255) # Blanco
+    
+    for v in vehiculos:
+        # 1. Obtener la celda base (x, y) del vehículo
+        base_x_grid, base_y_grid = v.posicion_base
+        
+        # 2. Convertir celda a píxeles
+        pixel_x = base_x_grid * CONSTANTES.CELDA_ANCHO
+        pixel_y = base_y_grid * CONSTANTES.CELDA_ALTO
+        
+        # 3. Crear el rectángulo para esa celda
+        base_rect = pygame.Rect(pixel_x, pixel_y, CONSTANTES.CELDA_ANCHO, CONSTANTES.CELDA_ALTO)
+        
+        # 4. Dibujar el rectángulo
+        pygame.draw.rect(surface, COLOR_BASE, base_rect)
+
+
 # --- INICIO DEL BUCLE PRINCIPAL ---
 run = True
 simulacion_iniciada = False
@@ -225,6 +247,7 @@ while run:
     color_panel_ui = (30, 30, 30)
     pygame.draw.rect(ventana, color_panel_ui, (0, CONSTANTES.MAPA_ALTO, CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.UI_ALTO))
     dibujar_grid()
+    dibujar_bases(ventana, grupo_vehiculos)
 
     
     grupo_items.draw(ventana)
