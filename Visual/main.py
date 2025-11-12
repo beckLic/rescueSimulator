@@ -190,7 +190,7 @@ def chequear_colisiones_vehiculos(grupo_vehiculos):
     """
     Revisa si dos vehículos ocupan la misma celda de la grilla y 
     los elimina si eso ocurre.
-    (MODIFICADO) Ahora reporta las muertes al mapa.
+    Ahora reporta las muertes al mapa.
     """
     posiciones_ocupadas = {} 
     vehiculos_a_eliminar = set() 
@@ -209,7 +209,7 @@ def chequear_colisiones_vehiculos(grupo_vehiculos):
     
     # Eliminar todos los vehículos que colisionaron
     for vehiculo in vehiculos_a_eliminar:
-        # (NUEVO) Registrar destrucción
+        # Registrar destrucción
         if vehiculo.jugador_id == 1:
             mapa.vehiculos_destruidos_j1 += 1
         else:
@@ -269,7 +269,7 @@ while run:
              ventana.blit(fuente_botones.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
 
 
-    # --- Botón "Init" (Reset) - (Se dibuja SIEMPRE) ---
+    # --- Botón "Init" (Reset) ---
     fuente_botones = pygame.font.SysFont(None, 24)
     pygame.draw.rect(ventana, (0, 200, 0), boton_init)
     ventana.blit(fuente_botones.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
@@ -299,7 +299,6 @@ while run:
         grupo_items.update(grupo_vehiculos, mapa, game_time)
         
         # 4. Chequear fin de juego
-        # ... (Tu lógica de fin de juego que ya tienes) ...
         fin_juego = False
         if not mapa.resources or not grupo_vehiculos:
             fin_juego = True
