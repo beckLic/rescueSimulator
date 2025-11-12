@@ -10,7 +10,7 @@ Para correr el simulador, necesitarás Python 3 y las dependencias del proyecto.
 
 1.  **Clonar el repositorio:**
     ```bash
-    git clone [URL-DE-TU-REPOSITORIO-GIT]
+    git clone https://github.com/beckLic/rescueSimulator.git
     cd rescueSimulator
     ```
 
