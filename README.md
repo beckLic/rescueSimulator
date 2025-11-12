@@ -1,4 +1,39 @@
-Enfoque para el manejo de las minas y vehiculos: Desde el motor del juego se va a estar chequeando constantemente las posiciones de los vehiculos y las minas para detectar colisiones,
-las minas van a tener atributos como posicion, radio(para las circulares), largo y orientacion(para las lineales), la mina movil va a tener su timer junto con su radio para ir cambiando de posicion
-cada 5 frames. De esta forma el motor del juego mediante un bucle va llamando a las funciones correspondientes pasando como parametros las posiciones de los vehiculos.
+# Proyecto: Simulador de Rescate (Algoritmos II)
+
+Este proyecto es un simulador de estrategia en 2D desarrollado en Python y Pygame para la materia Algoritmos y Estructuras de Datos II. Dos equipos de vehículos autónomos (IA) compiten para recolectar recursos en un mapa dinámico lleno de minas.
+
+El proyecto implementa algoritmos de pathfinding (A*), evasión de obstáculos en tiempo real y una arquitectura modular orientada a objetos.
+
+## Instrucciones de Instalación
+
+Para correr el simulador, necesitarás Python 3 y las dependencias del proyecto.
+
+1.  **Clonar el repositorio:**
+    ```bash
+    git clone [URL-DE-TU-REPOSITORIO-GIT]
+    cd rescueSimulator
+    ```
+
+2.  **(Recomendado) Crear un entorno virtual:**
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # En Windows: venv\Scripts\activate
+    ```
+
+3.  **Instalar dependencias:**
+    Usa el archivo `requirements.txt` para instalar Pygame:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## 🚀 Cómo Usar (Ejecutar)
+
+El punto de entrada principal del proyecto es el archivo `rescue_simulator.py`.
+
+**Para ejecutar el simulador:**
+
+Asegúrate de estar en la carpeta raíz del proyecto (`rescueSimulator/`) y ejecuta:
+
+```bash
+python rescue_simulator.py
 
