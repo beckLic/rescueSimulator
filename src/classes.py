@@ -181,7 +181,13 @@ class Vehiculo(pygame.sprite.Sprite):
                     puntaje_obtenido = 0
                     for recurso in self.carga_actual:
                         puntaje_obtenido += recurso.score
-                    
+                        tipo_recurso = recurso.type
+                        if self.jugador_id == 1:
+                            if tipo_recurso in map_manager.recursos_j1: # Usamos map_manager, no mapa
+                                map_manager.recursos_j1[tipo_recurso] += 1
+                        else: # jugador_id == 2
+                            if tipo_recurso in map_manager.recursos_j2:
+                                map_manager.recursos_j2[tipo_recurso] += 1
                     if self.jugador_id == 1:
                         map_manager.puntaje_j1 += puntaje_obtenido
                     else: 
@@ -553,32 +559,20 @@ class Mina(pygame.sprite.Sprite):
         
         # Iteramos sobre una copia .sprites() para poder modificar el grupo
         for vehiculo in grupo_vehiculos.sprites():
-            
-            # Convertimos la posición flotante del vehículo a una tupla de enteros (x, y)
             pos_vehiculo_xy = (int(vehiculo.posicion.x), int(vehiculo.posicion.y))
-            
-            # ¡Usamos is_inside_area!
-            # Para MinaCircular/Lineal, esto chequeará el radio.
-            # Para MinaMovil, esta MISMA LLAMADA (self.is_inside_area)
-            # revisará internamente si 'is_active' es True.
+            # ... (lógica de is_inside_area) ...
             if self.is_inside_area(pos_vehiculo_xy):
                 
                 # ¡Colisión detectada!
                 print(f"¡BOOM! Mina en {self.position} explota sobre {vehiculo.id}.")
+
+                # (NUEVO) Registrar destrucción del vehículo
+                if vehiculo.jugador_id == 1:
+                    mapa.vehiculos_destruidos_j1 += 1
+                else:
+                    mapa.vehiculos_destruidos_j2 += 1
                 
                 vehiculo.kill() # Daña/elimina el vehículo
-                
-                # Las minas móviles (MinaMovil) NO se autodestruyen.
-                # Así que solo matamos la mina si NO es una MinaMovil.
-                if not isinstance(self, MinaMovil):
-                    mapa.eliminar_elemento(self.position[0], self.position[1])
-                    self.kill() # La mina estática también se destruye
-                    # Como la mina estática se destruyó, no necesitamos
-                    # seguir chequeando si choca con otros vehículos.
-                    break 
-                
-                # Si es una MinaMovil, no se destruye y puede
-                # seguir explotando en el mismo frame (multikill)
     def draw_radius(self, surface):
         """
         Dibuja el área de efecto LÓGICA de la mina, celda por celda.

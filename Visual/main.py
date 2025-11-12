@@ -8,6 +8,8 @@ from src.classes import load_resource_config, Jeep, Moto, Camion, Auto
 
 pygame.init()
 fuente_hud = pygame.font.SysFont("Arial", 30)
+fuente_titulo_final = pygame.font.SysFont("Arial", 60)
+fuente_stats = pygame.font.SysFont("Arial", 28)
 ventana = pygame.display.set_mode((CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.VENTANA_ALTO_TOTAL))
 
 RUTA_CONFIG = "config/default_config.json"
@@ -41,6 +43,94 @@ mapa._colocar_recursos(grupo_items)
 boton_init = pygame.Rect(50, CONSTANTES.MAPA_ALTO + 30, 120, 40)
 boton_play = pygame.Rect(200, CONSTANTES.MAPA_ALTO + 30, 120, 40)
 simulacion_iniciada = False
+
+def dibujar_pantalla_final():
+    """
+    Dibuja la pantalla de estadísticas de fin de juego.
+    """
+    # Fondo semitransparente
+    s = pygame.Surface((CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.VENTANA_ALTO_TOTAL), pygame.SRCALPHA)
+    s.fill((0, 0, 0, 210)) # Negro con 210 de alfa (bastante opaco)
+    ventana.blit(s, (0, 0))
+    
+    # 1. Título
+    titulo = fuente_titulo_final.render("Simulación Finalizada", True, (255, 255, 255))
+    rect_titulo = titulo.get_rect(centerx=CONSTANTES.VENTANA_ANCHO_TOTAL / 2, y=50)
+    ventana.blit(titulo, rect_titulo)
+
+    # 2. Posiciones de columnas
+    x_col_1 = CONSTANTES.VENTANA_ANCHO_TOTAL * 0.25
+    x_col_2 = CONSTANTES.VENTANA_ANCHO_TOTAL * 0.75
+    y_inicio = 150
+
+    # --- COLUMNA 1: EQUIPO AZUL ---
+    titulo_j1 = fuente_hud.render("Equipo Azul", True, (100, 150, 255))
+    ventana.blit(titulo_j1, titulo_j1.get_rect(centerx=x_col_1, y=y_inicio))
+    
+    # Puntaje Total
+    score_j1 = fuente_stats.render(f"Puntaje Total: {mapa.puntaje_j1}", True, (255, 255, 255))
+    ventana.blit(score_j1, score_j1.get_rect(centerx=x_col_1, y=y_inicio + 60))
+    
+    # Vehículos Destruidos
+    muertes_j1 = fuente_stats.render(f"Vehículos Destruidos: {mapa.vehiculos_destruidos_j1}", True, (255, 255, 255))
+    ventana.blit(muertes_j1, muertes_j1.get_rect(centerx=x_col_1, y=y_inicio + 100))
+    
+    # Recursos
+    recursos_titulo_j1 = fuente_stats.render("Recursos Recolectados:", True, (200, 200, 200))
+    ventana.blit(recursos_titulo_j1, recursos_titulo_j1.get_rect(centerx=x_col_1, y=y_inicio + 160))
+    
+    y_recurso = y_inicio + 200
+    for tipo, cantidad in mapa.recursos_j1.items():
+        if cantidad > 0: # Solo mostrar si recolectó al menos uno
+            texto = fuente_stats.render(f"{tipo}: {cantidad}", True, (255, 255, 255))
+            ventana.blit(texto, texto.get_rect(centerx=x_col_1, y=y_recurso))
+            y_recurso += 40
+
+    # --- COLUMNA 2: EQUIPO ROJO ---
+    titulo_j2 = fuente_hud.render("Equipo Rojo", True, (255, 100, 100))
+    ventana.blit(titulo_j2, titulo_j2.get_rect(centerx=x_col_2, y=y_inicio))
+    
+    # Puntaje Total
+    score_j2 = fuente_stats.render(f"Puntaje Total: {mapa.puntaje_j2}", True, (255, 255, 255))
+    ventana.blit(score_j2, score_j2.get_rect(centerx=x_col_2, y=y_inicio + 60))
+    
+    # Vehículos Destruidos
+    muertes_j2 = fuente_stats.render(f"Vehículos Destruidos: {mapa.vehiculos_destruidos_j2}", True, (255, 255, 255))
+    ventana.blit(muertes_j2, muertes_j2.get_rect(centerx=x_col_2, y=y_inicio + 100))
+    
+    # Recursos
+    recursos_titulo_j2 = fuente_stats.render("Recursos Recolectados:", True, (200, 200, 200))
+    ventana.blit(recursos_titulo_j2, recursos_titulo_j2.get_rect(centerx=x_col_2, y=y_inicio + 160))
+    
+    y_recurso = y_inicio + 200
+    for tipo, cantidad in mapa.recursos_j2.items():
+        if cantidad > 0: # Solo mostrar si recolectó al menos uno
+            texto = fuente_stats.render(f"{tipo}: {cantidad}", True, (255, 255, 255))
+            ventana.blit(texto, texto.get_rect(centerx=x_col_2, y=y_recurso))
+            y_recurso += 40
+
+    # 3. Ganador
+    texto_str = ""
+    color_texto = (255, 255, 255)
+    if mapa.puntaje_j1 > mapa.puntaje_j2:
+        texto_str = "¡Gana Equipo Azul!"
+        color_texto = (100, 150, 255)
+    elif mapa.puntaje_j2 > mapa.puntaje_j1:
+        texto_str = "¡Gana Equipo Rojo!"
+        color_texto = (255, 100, 100)
+    else:
+        texto_str = "¡Empate!"
+    
+    ganador = fuente_titulo_final.render(texto_str, True, color_texto)
+    rect_ganador = ganador.get_rect(centerx=CONSTANTES.VENTANA_ANCHO_TOTAL / 2, y=CONSTANTES.ALTO_VENTANA - 150)
+    ventana.blit(ganador, rect_ganador)
+    
+    # 4. Instrucción de reinicio (en el panel de UI)
+    instruccion = fuente_stats.render("Presiona 'Init' para reiniciar", True, (255, 255, 255))
+    rect_instruccion = instruccion.get_rect(centerx=CONSTANTES.VENTANA_ANCHO_TOTAL / 2, y=CONSTANTES.MAPA_ALTO + 50)
+    ventana.blit(instruccion, rect_instruccion)
+
+
 def dibujar_controles(finalizada):
     """
     Dibuja los controles de la UI (botones izquierdos).
@@ -63,6 +153,7 @@ def inicializar_simulacion():
     game_time = 0
     simulacion_finalizada = False
     print("Iniciando simulación...")
+    mapa.reiniciar_estadisticas()
     mapa.puntaje_j1 = 0
     mapa.puntaje_j2 = 0
     # 1. Limpiar grupos
@@ -102,30 +193,32 @@ def chequear_colisiones_vehiculos(grupo_vehiculos):
     """
     Revisa si dos vehículos ocupan la misma celda de la grilla y 
     los elimina si eso ocurre.
+    (MODIFICADO) Ahora reporta las muertes al mapa.
     """
-    posiciones_ocupadas = {} # Almacena { (x,y) : vehiculo }
-    vehiculos_a_eliminar = set() # Usamos un set para evitar duplicados
+    posiciones_ocupadas = {} 
+    vehiculos_a_eliminar = set() 
 
-    # Iteramos sobre una copia .sprites() para poder modificar el grupo
     for vehiculo in grupo_vehiculos.sprites():
-        # La posición es un Vector2, la convertimos en tupla para usarla como clave
         pos_tuple = (int(vehiculo.posicion.x), int(vehiculo.posicion.y))
 
         if pos_tuple in posiciones_ocupadas:
-            # ¡Colisión detectada!
             otro_vehiculo = posiciones_ocupadas[pos_tuple]
             print(f"¡COLISIÓN en {pos_tuple} entre {vehiculo.id} y {otro_vehiculo.id}!")
             
-            # Añadir ambos vehículos al set de eliminación
             vehiculos_a_eliminar.add(vehiculo)
             vehiculos_a_eliminar.add(otro_vehiculo)
         else:
-            # Esta celda ahora está ocupada por este vehículo
             posiciones_ocupadas[pos_tuple] = vehiculo
     
     # Eliminar todos los vehículos que colisionaron
     for vehiculo in vehiculos_a_eliminar:
-        vehiculo.kill() # .kill() los elimina de CUALQUIER grupo al que pertenezcan
+        # (NUEVO) Registrar destrucción
+        if vehiculo.jugador_id == 1:
+            mapa.vehiculos_destruidos_j1 += 1
+        else:
+            mapa.vehiculos_destruidos_j2 += 1
+        
+        vehiculo.kill() # .kill() los elimina de CUALQUIER grupo
 
 
 # --- INICIO DEL BUCLE PRINCIPAL ---
@@ -133,107 +226,81 @@ run = True
 simulacion_iniciada = False
 inicializar_simulacion()
 while run:
-    reloj.tick(5)#FPS
+    reloj.tick(10)#FPS
     game_time += 1
-    ventana.fill(CONSTANTES.COLOR_NEGRO)
-    # Dibujamos el fondo del panel de UI
-    # (Un gris oscuro, por ejemplo)
-    color_panel_ui = (30, 30, 30)
-    pygame.draw.rect(ventana, color_panel_ui, (0, CONSTANTES.MAPA_ALTO, CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.UI_ALTO))
-    dibujar_grid()
-
     
-    grupo_items.draw(ventana)
-    grupo_vehiculos.draw(ventana)
-    for item in grupo_items:
-        if hasattr(item, 'draw_radius'):
-            item.draw_radius(ventana)
+    # (MODIFICADO) Lógica de dibujado
+    if simulacion_finalizada:
+        # --- PANTALLA FINAL ---
+        # El fondo de la simulación (detrás de la superposición)
+        ventana.fill(CONSTANTES.COLOR_NEGRO)
+        color_panel_ui = (30, 30, 30)
+        pygame.draw.rect(ventana, color_panel_ui, (0, CONSTANTES.MAPA_ALTO, CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.UI_ALTO))
+        dibujar_grid()
+        grupo_items.draw(ventana)
+        grupo_vehiculos.draw(ventana)
+        
+        # Superponer la pantalla de estadísticas
+        dibujar_pantalla_final() 
+        
+    else:
+        # --- SIMULACIÓN ACTIVA O EN PAUSA ---
+        ventana.fill(CONSTANTES.COLOR_NEGRO)
+        color_panel_ui = (30, 30, 30)
+        pygame.draw.rect(ventana, color_panel_ui, (0, CONSTANTES.MAPA_ALTO, CONSTANTES.VENTANA_ANCHO_TOTAL, CONSTANTES.UI_ALTO))
+        dibujar_grid()
+        
+        grupo_items.draw(ventana)
+        grupo_vehiculos.draw(ventana)
+        for item in grupo_items:
+            if hasattr(item, 'draw_radius'):
+                item.draw_radius(ventana)
+        
+        # Dibujar HUD (Puntajes)
+        texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255))
+        texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100))
+        pygame.draw.rect(ventana, (0,0,0), (345, CONSTANTES.MAPA_ALTO + 20, 250, 65))
+        ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
+        ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
+        
+        # Dibujar Controles (Botones)
+        fuente_botones = pygame.font.SysFont(None, 24)
+        pygame.draw.rect(ventana, (0, 200, 0), boton_init)
+        ventana.blit(fuente_botones.render("Init", True, (255,255,255)), (85, CONSTANTES.MAPA_ALTO + 40))
+        if not simulacion_iniciada:
+             pygame.draw.rect(ventana, (0, 0, 200), boton_play)
+             ventana.blit(fuente_botones.render("Play", True, (255,255,255)), (235, CONSTANTES.MAPA_ALTO + 40))
 
-   
 
-    # Eventos (cerrar ventana)
+    # --- Eventos (Se manejan siempre) ---
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            # El botón 'Init' funciona siempre y resetea el juego
             if boton_init.collidepoint(event.pos):
-                inicializar_simulacion() # Resetea todo, incl. simulacion_finalizada
-                    
-            # El botón 'Play' solo funciona si el juego NO ha iniciado Y NO ha finalizado
+                inicializar_simulacion() # ¡Esto resetea todo, incluida la pantalla final!
             elif boton_play.collidepoint(event.pos) and not simulacion_iniciada and not simulacion_finalizada:
                 simulacion_iniciada = True
                 print("Simulación iniciada")
     
-    # --- Lógica de Simulación ---
+    # --- Lógica de Simulación (Solo si está iniciada) ---
     if simulacion_iniciada:
-            
-            # 1. Actualiza la IA de los vehículos
-            grupo_vehiculos.update(mapa, game_time,grupo_vehiculos)
-            
-            # 2. Chequear colisiones entre vehículos
-            chequear_colisiones_vehiculos(grupo_vehiculos)
-            
-            # 3. Actualiza los items (para colisiones con minas/recursos)
-            grupo_items.update(grupo_vehiculos, mapa, game_time)
-            
-            # 4.Chequear condiciones de fin de juego
-            # Un grupo de sprites vacío evalúa como False
-            if not mapa.resources or not grupo_vehiculos:
-                simulacion_iniciada = False
-                simulacion_finalizada = True
-                print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
-
-            
-    # Archivo: Visual/main.py
-
-
-    # --- Dibujar HUD ---
-    
-    # Puntajes (lado izquierdo/centro)
-    texto_j1 = fuente_hud.render(f"Equipo Azul: {mapa.puntaje_j1}", True, (100, 150, 255))
-    texto_j2 = fuente_hud.render(f"Equipo Rojo: {mapa.puntaje_j2}", True, (255, 100, 100))
-    
-    pygame.draw.rect(ventana, (0,0,0), (345, CONSTANTES.MAPA_ALTO + 20, 250, 65))
-    
-    ventana.blit(texto_j1, (350, CONSTANTES.MAPA_ALTO + 25))
-    ventana.blit(texto_j2, (350, CONSTANTES.MAPA_ALTO + 55))
-    
-    # Controles
-    dibujar_controles(simulacion_finalizada)
-
-    # --- Dibujar Ganador ---
-    if simulacion_finalizada:
-        texto_str = ""
-        color_texto = (255, 255, 255) # Blanco por defecto
         
-        if mapa.puntaje_j1 > mapa.puntaje_j2:
-            texto_str = "¡Gana Equipo Azul!"
-            color_texto = (100, 150, 255) # Azul
-        elif mapa.puntaje_j2 > mapa.puntaje_j1:
-            texto_str = "¡Gana Equipo Rojo!"
-            color_texto = (255, 100, 100) # Rojo
-        else:
-            texto_str = "¡Empate!"
-            color_texto = (255, 255, 255) # Blanco
+        # 1. Actualiza IA
+        grupo_vehiculos.update(mapa, game_time, grupo_vehiculos)
+        
+        # 2. Chequear colisiones
+        chequear_colisiones_vehiculos(grupo_vehiculos)
+        
+        # 3. Actualiza items (minas)
+        grupo_items.update(grupo_vehiculos, mapa, game_time)
+        
+        # 4. Chequear fin de juego
+        if not mapa.resources or not grupo_vehiculos:
+            simulacion_iniciada = False
+            simulacion_finalizada = True
+            print(f"¡Simulación finalizada! Recursos: {len(mapa.resources)}, Vehículos: {len(grupo_vehiculos)}")
 
-        # Renderizar texto del ganador
-        texto_ganador = fuente_hud.render(texto_str, True, color_texto)
-        
-        # Posición X: El ancho total de la ventana menos un margen de 50px
-        pos_x_derecha = CONSTANTES.VENTANA_ANCHO_TOTAL - 50 
-        
-        # Posición Y: Centrado verticalmente en el panel del HUD
-        pos_y_centro_hud = CONSTANTES.MAPA_ALTO + (CONSTANTES.UI_ALTO / 2)
-        
-        # Crear el rectángulo del texto y posicionarlo
-        rect_ganador = texto_ganador.get_rect(centery=pos_y_centro_hud, right=pos_x_derecha)
-        
-        # Dibujar el texto en la ventana
-        ventana.blit(texto_ganador, rect_ganador)
-
-    
     pygame.display.update()
 
 pygame.quit()
-    #Debuggin

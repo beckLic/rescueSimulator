@@ -8,6 +8,8 @@ from Visual.CONSTANTES import *
 
 # Importar constantes (si las necesitás)
 from Visual import CONSTANTES
+from src.classes import Recurso
+from src.classes import MinaMovil
 # CLASE PARA INICIALIZAR EL MAPA
 class MapManager:
     #SE VA A INSTANCIAR EN EL game_engine.py
@@ -16,19 +18,35 @@ class MapManager:
         self.resources_config = config.get("Recursos",{})
         self.width = width
         self.height = height
-        # Atributo para guardar los objetos de las minas
         self.mines = []
-        # Atributo para guardar los objetos de los recursos
         self.resources = []
-        # atributo para guardar los objetos de los vehiculos
-        self.vehiculos = []
-        # Creamos una matriz para representar el mapa, inicialmente vacía (con None)
+        # ... (listas de minas, recursos, vehiculos) ...
         self.grid = [[None for _ in range(width)] for _ in range(height)]
         print(f"Mapa de {width}x{height} creado.")
 
-        #puntajes
+        # (MODIFICADO) Moveremos todo el reinicio al helper
         self.puntaje_j1 = 0
         self.puntaje_j2 = 0
+        self.recursos_j1 = {}
+        self.recursos_j2 = {}
+        self.vehiculos_destruidos_j1 = 0
+        self.vehiculos_destruidos_j2 = 0
+        self.reiniciar_estadisticas() # Llamar al helper en la inicialización
+
+    def reiniciar_estadisticas(self):
+        """
+        (NUEVO) Resetea todos los puntajes y estadísticas.
+        """
+        self.puntaje_j1 = 0
+        self.puntaje_j2 = 0
+        
+        # (Lee los tipos de recursos de la config para inicializar los diccionarios)
+        tipos_recursos = list(self.resources_config.keys())
+        self.recursos_j1 = {tipo: 0 for tipo in tipos_recursos}
+        self.recursos_j2 = {tipo: 0 for tipo in tipos_recursos}
+        
+        self.vehiculos_destruidos_j1 = 0
+        self.vehiculos_destruidos_j2 = 0
 
     def get_recursos(self):
         """Devuelve la lista de objetos de recursos."""
