@@ -4,7 +4,7 @@ import pygame
 from Visual import CONSTANTES
 from src.map_manager import MapManager
 from src.game_engine import GameEngine
-from src.classes import load_resource_config,Vehiculo, Jeep, Moto, Camion, Auto, Explosion
+from src.classes import load_resource_config,Vehiculo, Jeep, Moto, Camion, Auto, Explosion, Recurso
 import csv
 import os
 import gzip
@@ -415,7 +415,16 @@ while run:
                             pos_fuera * CONSTANTES.CELDA_ANCHO,
                             pos_fuera * CONSTANTES.CELDA_ALTO
                         )
-
+            grupo_items.update(grupo_vehiculos, mapa, frame_actual)
+            grupo_explosiones.update()
+            for vehiculo in grupo_vehiculos:
+                # Comprueba si este vehículo está chocando con algún item
+                items_colisionados = pygame.sprite.spritecollide(vehiculo, grupo_items, False)
+                
+                for item in items_colisionados:
+                    
+                    if isinstance(item, Recurso):
+                        item.kill() # Elimina el sprite de 'grupo_items'
             # 2. Avanzar el frame SÓLO SI no está pausado
             if not replay_pausado:
                 frame_actual += 1

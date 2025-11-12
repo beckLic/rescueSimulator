@@ -4,6 +4,7 @@ import pygame
 import random
 from src.pathfinding import *
 from Visual import CONSTANTES
+
 class Vehiculo(pygame.sprite.Sprite):
     """
     Clase base que representa a cualquier vehículo en el simulador.
